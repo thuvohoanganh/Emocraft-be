@@ -6,7 +6,7 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-const emotionRecognize = async (req, res, next) => {
+const recognizeEmotion = async (req, res, next) => {
     const diary = req.body.diary
     const prompts = `You are an emotion analyzer capable of understanding the sentiment within text. Consider the emotions expressed from my diary: “${diary}”. Only use emotions in this list: happy, sad, angry, fear, surprised, disgusted, neutral. Tell me about my emotion like a friend and explain your reasoning. Response in a valid JSON object to be consumed by an application, following this pattern: {“items”: [{ “emotion”, “analysis”}]}. Here are 2 examples:
 Example 1:
@@ -45,6 +45,42 @@ Response: {“items”: [{ “emotion”: “loved”, “analysis”: “as you
     });
 }
 
+const predictContextualInfor = async (req, res, next) => {
+    const diary = req.body.diary
+    const prompts = `You are an experienced diary study researcher. You are conducting a diary study right now, and when you receive my diary, you need to help the me to record some contextual information. These contextual information will be used as the cues for me to recall the event. Please predict the following contextual information based on the aforementioned information: 
+Location: predict three possible point of interest locations, you could use the point of interest location categories in Google Maps or some other location-based service apps. 
+People: select only one from these five categories, Alone, Families, Friends, Colleagues and Acquaintances, please keep the same spelling.
+Activity: give six descriptions of the six possible activities in this scenario (give more details for each activity, but each description should be less than 151 characters). 
+Finally output these information in English in valid JSON format. And the value for the Location and Activity should be a list of three and six elements respectively. EXAMPLE: {"Location": [Library, Workspace, Meeting room], "People": Colleague, "Activity": [Working on laptop and taking notes, Studying or doing research, Planning or organizing tasks for the day, Preparing a meeting, Watching a academic seminar, Discussing the current project]}”
+My diary: ${diary}`
+
+    let response
+    try {
+        const chatCompletions = await openai.chat.completions.create({
+            messages: [{ role: "user", content: prompts }],
+            model: "gpt-3.5-turbo",
+        });
+    
+        response = chatCompletions?.choices?.[0]?.message?.content
+        if (!prompts || !response ) {
+           throw("no response from ChatGPT")
+        }
+        response = JSON.parse(response)
+    } catch(err) {
+        const error = new HttpError(
+            'chat fail',
+            500
+        );
+        return next(error);
+    }
+   
+
+    res.status(200).json({
+        data: response
+    });
+}
+
 module.exports = {
-    emotionRecognize,
+    recognizeEmotion,
+    predictContextualInfor
 }
