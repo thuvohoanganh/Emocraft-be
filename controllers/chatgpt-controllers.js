@@ -1,3 +1,4 @@
+const HttpError = require('../models/http-error');
 const OpenAI = require("openai")
 const dotenv = require("dotenv")
 dotenv.config()
@@ -8,7 +9,7 @@ const openai = new OpenAI({
 
 const recognizeEmotion = async (req, res, next) => {
     const diary = req.body.diary
-    const prompts = `You are an emotion analyzer capable of understanding the sentiment within text. Consider the emotions expressed from my diary: “${diary}”. Only use emotions in this list: happy, sad, angry, fear, surprised, disgusted, neutral. Tell me about my emotion like a friend and explain your reasoning. Response in a valid JSON object to be consumed by an application, following this pattern: {“items”: [{ “emotion”, “analysis”}]}. Here are 2 examples:
+    const prompts = `You are an emotion analyzer capable of understanding the sentiment within text. Consider the emotions expressed from my diary: “${diary}”. Only use emotions in this list: happy, sad, angry, fear, surprised, disgusted, neutral. Tell me about my emotion like a friend and explain your reasoning. Your tone should be friendly and gentle. Response in a valid JSON object to be consumed by an application, following this pattern: {“items”: [{ “emotion”, “analysis”}]}. Here are 2 examples:
 Example 1:
 My diary: I gave a presentation in front of many people today. My heart was pounding and my face was hot, so I couldn't proceed with the presentation properly. Someone interrupted me in the middle of the conversation to ask a question, and I felt bad because I thought it was rude.
 
@@ -25,24 +26,114 @@ Response: {“items”: [{ “emotion”: “loved”, “analysis”: “as you
             messages: [{ role: "user", content: prompts }],
             model: "gpt-3.5-turbo",
         });
-    
+
         response = chatCompletions?.choices?.[0]?.message?.content
-        if (!prompts || !response ) {
-           throw("no response from ChatGPT")
+        if (!prompts || !response) {
+            throw ("no response from ChatGPT")
         }
         response = JSON.parse(response)
-    } catch(err) {
+    } catch (err) {
         const error = new HttpError(
             'chat fail',
             500
         );
         return next(error);
     }
-   
+
 
     res.status(200).json({
         data: response
     });
+}
+
+const feedback = async (req, res, next) => {
+    const diary = req.body.diary
+    const dialog = req.body.dialog
+    const phase = await detectFeedbackPhase(diary, dialog)
+    console.log(phase)
+    if ( phase === "" ) {
+        const error = new HttpError(
+            'chat fail',
+            500
+        );
+        return next(error);
+    }
+    let response = await generateResponse(diary, dialog, phase)
+    if ( response === "" ) {
+        const error = new HttpError(
+            'chat fail',
+            500
+        );
+        return next(error);
+    }
+
+    res.status(200).json({
+        data: response
+    });
+}
+
+const detectFeedbackPhase = async (diary, dialog) => {
+    let dialogText = ''
+    dialog.forEach(({ role, text }) => dialogText += `${role}: ${text}\n`)
+    const prompts = `You are an emotion analyzer capable of understanding the sentiment within text. You give me an analysis and I give you my feedback. Your response depends on my final reply. Consider my final response match which case below and response that case name. EXAMPLE: agree. Do not include any "you:".
+Cases:
+disagree: I don’t agree with your analysis and don’t explain more.
+explained: I tell you more about my emotion and explain why.
+supplement: I tell you another emotion beside your analysis and do not explain why.
+end: I have nothing to share more.
+agree: I agree with your analysis.
+
+My diary: ${diary}
+Dialog: ${dialogText}`
+
+    let response = 0
+    try {
+        const chatCompletions = await openai.chat.completions.create({
+            messages: [{ role: "user", content: prompts }],
+            model: "gpt-3.5-turbo",
+        });
+
+        response = chatCompletions?.choices?.[0]?.message?.content
+        if (!prompts || !response) {
+            throw ("no response from ChatGPT")
+        }
+    } catch (err) {
+        return ""
+    }
+    return response
+}
+
+const generateResponse = async (diary, dialog, phase) => {
+    let dialogText = ''
+    dialog.forEach(({ role, text }) => dialogText += `${role}: ${text}\n`)
+    let task = ""
+    if (phase === "disagree") {
+        task = "Ask me why I don't agree with your analysis and aks me about my feelings"
+    } else if (phase === "supplement") {
+        task = "Ask more about my feeling"
+    } else {
+        task = "Tell me if I want to finish section, please click like button"
+    } 
+    const prompts = `You are an emotion analyzer capable of understanding the sentiment within text. You give me an analysis and I give you my feedback. Your response depends on my final reply. ${task}. Your tone should be friendly and gentle. Do not include any prefix "you:".
+
+My diary: ${diary}
+Dialog: ${dialogText}`
+
+    let response = 0
+    try {
+        const chatCompletions = await openai.chat.completions.create({
+            messages: [{ role: "user", content: prompts }],
+            model: "gpt-3.5-turbo",
+        });
+
+        response = chatCompletions?.choices?.[0]?.message?.content
+        if (!prompts || !response) {
+            throw ("no response from ChatGPT")
+        }
+    } catch (err) {
+        return ""
+    }
+    return response
 }
 
 const predictContextualInfor = async (req, res, next) => {
@@ -60,20 +151,20 @@ My diary: ${diary}`
             messages: [{ role: "user", content: prompts }],
             model: "gpt-3.5-turbo",
         });
-    
+
         response = chatCompletions?.choices?.[0]?.message?.content
-        if (!prompts || !response ) {
-           throw("no response from ChatGPT")
+        if (!prompts || !response) {
+            throw ("no response from ChatGPT")
         }
         response = JSON.parse(response)
-    } catch(err) {
+    } catch (err) {
         const error = new HttpError(
             'chat fail',
             500
         );
         return next(error);
     }
-   
+
 
     res.status(200).json({
         data: response
@@ -82,5 +173,6 @@ My diary: ${diary}`
 
 module.exports = {
     recognizeEmotion,
-    predictContextualInfor
+    predictContextualInfor,
+    feedback
 }
