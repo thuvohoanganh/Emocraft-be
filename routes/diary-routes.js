@@ -2,22 +2,31 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 const diaryController = require('../controllers/diary-controllers');
-const { storeDiary, retrieveDiary } = diaryController;
+const { createDiary, retrieveDiary } = diaryController;
 
-router.post('/store',
+router.post('/create',
     [
         check('userid')
+            .not()
+            .isEmpty(),
+        check('timestamp')
             .not()
             .isEmpty(),
         check('content')
             .not()
             .isEmpty(),
         check('emotion')
+            .isArray(),
+        check('people')
+            .isArray(),
+        check('dialog')
+            .isObject(),
+        check('images')
             .isArray()
     ],
-    storeDiary
+    createDiary
 );
 
-router.get(':/id', diaryController.retrieveDiary);
+router.get(':/id', retrieveDiary);
 
 module.exports = router;
