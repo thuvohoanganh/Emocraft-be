@@ -13,7 +13,6 @@ const createDiary = async (req, res, next) => {
         location,
         dialog: JSON.stringify(dialog),
         images,
-        createdAt
     });
 
     try {
