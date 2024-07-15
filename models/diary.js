@@ -2,11 +2,6 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const DiarySchema = new mongoose.Schema({
-    postid: {
-        type: String,
-        unique: true,
-        required: true
-    },
     userid: {
         type: Schema.Types.ObjectId,
         ref: 'User',
@@ -14,7 +9,7 @@ const DiarySchema = new mongoose.Schema({
     },
     timestamp: {
         type: Date,
-        default: Date.now
+        required: true
     },
     content: {
         type: String
@@ -22,8 +17,20 @@ const DiarySchema = new mongoose.Schema({
     emotions: {
         type: [String]
     },
+    people: {
+        type: [String]
+    },
     location: {
         type: String
+    },
+    dialog: {
+        type: String //stringify the JSON dialog
+    },
+    images: {
+        type: [String]
+    },
+    createdAt: {
+        type: Date
     }
 })
 

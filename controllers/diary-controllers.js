@@ -1,16 +1,19 @@
 const Diary = require('../models/diary');
 const HttpError = require('../models/http-error');
 
-const storeDiary = async (req, res, next) => {
+const createDiary = async (req, res, next) => {
     const { postid, userid, timestamp, content, emotions, location } = req.body;
 
     const newDiary = new Diary({
-        postid,
         userid,
         timestamp,
         content,
         emotions,
-        location
+        people,
+        location,
+        dialog: JSON.stringify(dialog),
+        images,
+        createdAt
     });
 
     try {
@@ -44,6 +47,6 @@ const retrieveDiary = async (req, res, next) => {
 };
 
 module.exports = {
-    storeDiary,
+    createDiary,
     retrieveDiary
 };
