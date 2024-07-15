@@ -3,8 +3,7 @@ const Schema = mongoose.Schema;
 
 const DiarySchema = new mongoose.Schema({
     userid: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
+        type: String,
         required: true
     },
     timestamp: {

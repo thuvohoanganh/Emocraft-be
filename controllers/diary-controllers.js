@@ -2,7 +2,7 @@ const Diary = require('../models/diary');
 const HttpError = require('../models/http-error');
 
 const createDiary = async (req, res, next) => {
-    const { postid, userid, timestamp, content, emotions, location } = req.body;
+    const { userid, timestamp, content, emotions, people, location, dialog, images } = req.body;
 
     const newDiary = new Diary({
         userid,
@@ -12,7 +12,7 @@ const createDiary = async (req, res, next) => {
         people,
         location,
         dialog: JSON.stringify(dialog),
-        images,
+        images
     });
 
     try {
@@ -32,16 +32,16 @@ const retrieveDiary = async (req, res, next) => {
     let diary;
     try {
         diary = await Diary.findById(postID).populate('userid', '-password');
+        if (!diary) next(new HttpError(
+            'Diary does not exist',
+            400
+        ))
+
     } catch (err) {
         const error = new HttpError('Retrieving diary entry failed, please try again later.', 500);
         return next(error);
     }
-
-    if (!diary) {
-        const error = new HttpError('Diary entry not found.', 404);
-        return next(error);
-    }
-
+    
     res.json({ diary });
 };
 
