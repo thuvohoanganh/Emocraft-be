@@ -1,48 +1,57 @@
 const Diary = require('../models/diary');
 const HttpError = require('../models/http-error');
+const { validationResult } = require('express-validator');
 
 const createDiary = async (req, res, next) => {
-    const { userid, timestamp, content, emotions, people, location, dialog, images } = req.body;
+    const errors = validationResult(req);
 
-    const newDiary = new Diary({
-        userid,
-        timestamp,
-        content,
-        emotions,
-        people,
-        location,
-        dialog: JSON.stringify(dialog),
-        images
-    });
+    if (!errors.isEmpty()) {
+        return next(
+            new HttpError(JSON.stringify(errors), 422)
+        );
+    }
 
+    let newDiary;
     try {
+        const diaryData = { ...req.body };
+
+        if (req.body.dialog) {
+            diaryData.dialog = JSON.stringify(req.body.dialog);
+        }
+
+        newDiary = new Diary(diaryData);
         await newDiary.save();
     } catch (err) {
-        const error = new HttpError('Creating diary post failed, please try again.', 500);
+        err && console.error(err);
+        const error = new HttpError(
+            'Creating diary entry failed, please try again.',
+            500
+        );
         return next(error);
     }
 
-    res.status(201).json({ diary: newDiary });
+    res.status(201).json({ postId: newDiary.id, diary: newDiary });
 };
 
 //GET diary by postid
 const retrieveDiary = async (req, res, next) => {
-    const postID = req.params.id;
-
-    let diary;
+    let existingDiary;
     try {
-        diary = await Diary.findById(postID).populate('userid', '-password');
-        if (!diary) next(new HttpError(
+        existingDiary = await Diary.findOne({ _id: req.params.pid }).populate('userid', '-password');
+        if (!existingDiary) next(new HttpError(
             'Diary does not exist',
             400
         ))
 
     } catch (err) {
-        const error = new HttpError('Retrieving diary entry failed, please try again later.', 500);
+        const error = new HttpError(
+            'Retrieving diary entry failed, please try again later.',
+            500
+        );
         return next(error);
     }
     
-    res.json({ diary });
+    res.json({ ...existingDiary._doc });
 };
 
 module.exports = {

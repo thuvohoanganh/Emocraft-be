@@ -15,18 +15,20 @@ router.post('/create',
         check('content')
             .not()
             .isEmpty(),
-        check('emotion')
+        check('emotions')
             .isArray(),
         check('people')
             .isArray(),
-        check('dialog')
-            .isObject(),
+        // check('dialog')
+        //     .optional()
+        //     .isObject(),
         check('images')
+            .optional()
             .isArray()
     ],
     createDiary
 );
 
-router.get(':/id', retrieveDiary);
+router.get('/:pid', retrieveDiary);
 
 module.exports = router;
