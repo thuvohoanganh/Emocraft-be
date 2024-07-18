@@ -11,15 +11,21 @@ const createDiary = async (req, res, next) => {
         );
     }
 
+    const { userid, timestamp, content, emotions, people, location, dialog, images, createdAt } = req.body;
+    
     let newDiary;
     try {
-        const diaryData = { ...req.body };
-
-        if (req.body.dialog) {
-            diaryData.dialog = JSON.stringify(req.body.dialog);
-        }
-
-        newDiary = new Diary(diaryData);
+        newDiary = new Diary({
+            userid,
+            timestamp,
+            content,
+            emotions,
+            people,
+            location,
+            dialog: JSON.stringify(dialog),
+            images,
+            createdAt
+        });
         await newDiary.save();
     } catch (err) {
         err && console.error(err);
