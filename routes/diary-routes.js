@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 const diaryController = require('../controllers/diary-controllers');
-const { createDiary, retrieveDiary } = diaryController;
+const { createDiary, retrieveDiary, getDiaries } = diaryController;
 
 router.post('/create',
     [
@@ -30,5 +30,7 @@ router.post('/create',
 );
 
 router.get('/:pid', retrieveDiary);
+
+router.get('/', getDiaries);
 
 module.exports = router;

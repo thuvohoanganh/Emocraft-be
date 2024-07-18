@@ -30,7 +30,7 @@ const createDiary = async (req, res, next) => {
     } catch (err) {
         err && console.error(err);
         const error = new HttpError(
-            'Creating diary entry failed, please try again.',
+            'Creating diary entry failed, please try again later.',
             500
         );
         return next(error);
@@ -60,7 +60,41 @@ const retrieveDiary = async (req, res, next) => {
     res.json({ ...existingDiary._doc });
 };
 
+const getDiaries = async (req, res, next) => {
+    let diaries;
+    let totalDiaries;
+    let result;
+
+    try {
+        const page = parseInt(req.query.page);
+        const limit = parseInt(req.query.limit);
+
+        if (page < 0 || limit < 0) throw '';
+        const startIndex = (page - 1) * limit;
+
+        diaries = await Diary.find().skip(startIndex).limit(limit);
+        totalDiaries = await Diary.find({}).count();
+
+        result = {
+            diaries: diaries.map(diary => diary.toObject({ getters: true })),
+            total_page: Math.ceil(totalDiaries / limit),
+            current_page: page,
+            total_diaries: totalDiaries
+        }
+
+    } catch (err) {
+        console.log(err);
+        const error = new HttpError(
+            'Fetching diaries failed, please try again later.',
+            500
+        );
+        return next(error);
+    }
+    res.json(result);
+};
+
 module.exports = {
     createDiary,
-    retrieveDiary
+    retrieveDiary,
+    getDiaries
 };
