@@ -9,11 +9,11 @@ router.post('/signup',
     [
         check('name')
             .not()
-            .isEmpty(),
-        check('email')
-            .normalizeEmail()
-            .isEmail(),
-        check('password').isLength({ min: 6 })
+            .isEmpty()
+            .withMessage('Name is required.'),
+        check('gender')
+            .isIn(['Male', 'Female', 'Other'])
+            .withMessage('Gender must be one of Male, Female, or Other.')
     ],
     signup);
 

@@ -33,7 +33,7 @@ const signup = async (req, res, next) => {
 
     let existingUser
     try {
-        existingUser = await User.findOne({ email: req.body.email }, '-password')
+        existingUser = await User.findOne({ name: req.body.name }, '-password')
     } catch (err) {
         const error = new HttpError(
             'Signing up failed, please try again later.',
@@ -52,8 +52,7 @@ const signup = async (req, res, next) => {
 
     let createdUser;
     try {
-        const hashedPass = await bcrypt.hash(req.body.password, 12);
-        createdUser = new User({ ...req.body, password: hashedPass });
+        createdUser = new User({ ...req.body });
         await createdUser.save();
     } catch (err) {
         err && console.error(err);
@@ -64,15 +63,15 @@ const signup = async (req, res, next) => {
         return next(error);
     }
 
-    res.status(201).json({ userId: createdUser.id, email: createdUser.email });
+    res.status(201).json({ userId: createdUser.id });
 };
 
 const login = async (req, res, next) => {
-    const { email, password } = req.body;
+    const { name } = req.body;
 
     let existingUser;
     try {
-        existingUser = await User.findOne({ email: email })
+        existingUser = await User.findOne({ name: name })
     } catch (err) {
         const error = new HttpError(
             'Logging in failed, please try again later - 1',
@@ -89,29 +88,9 @@ const login = async (req, res, next) => {
         return next(error);
     }
 
-    let isValidPass = false;
-    try {
-        isValidPass = await bcrypt.compare(password, existingUser.password);
-    } catch (err) {
-        err && console.log(err)
-        const error = new HttpError(
-            'Logging in failed, please try again later. - 2',
-            500
-        );
-        return next(error);
-    }
-
-    if (isValidPass !== true) {
-        const error = new HttpError(
-            'Invalid credentials, could not log you in.',
-            401
-        );
-        return next(error);
-    }
-
     let token = "";
     try {
-        token = jwt.sign({ userId: existingUser.id, email: existingUser.email }, process.env.JWT_SECRET, { expiresIn: '8h' })
+        token = jwt.sign({ userId: existingUser.id, name: existingUser.name }, process.env.JWT_SECRET, { expiresIn: '8h' })
     }
     catch (err) {
         const error = new HttpError(
@@ -121,7 +100,7 @@ const login = async (req, res, next) => {
         return next(error);
     }
 
-    res.status(200).json({ userId: existingUser.id, email: existingUser.email, token });
+    res.status(200).json({ userId: existingUser.id, name: existingUser.name, token });
 };
 
 

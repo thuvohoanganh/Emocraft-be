@@ -52,22 +52,20 @@
 - **Description**: Register a new user
 - **Request Type**: POST
 - **Required Fields**:
-    - `email`: User's email address
-    - `password`: User's password with a minimum of 6 characters
     - `name`: User's name
+    - `gender`: User's gender, the options are `Male`, `Female`, and `Other`
 
 #### Request Example:
 ```json
 {
-    "email": "hong.gildong@example.com",
-    "password": "any_password",
-    "name": "Hong Gildong"
+    "name": "Hong Gildong",
+    "gender": "Male"
 }
 ```
 
 #### Responses
 - `422`: Request is not valid
-- `400 User exists already`: There is a user associated with this email, please login instead
+- `400 User exists already`: There is a user associated with this name, please login instead
 
 ### Login
 
@@ -75,19 +73,17 @@
 - **Description**: Login into an existing account and get an authentication token
 - **Request Type**: POST
 - **Required Fields**:
-    - `email`: User's email address
-    - `password`: User's password
+    - `name`: User's name
 
 #### Request Example:
 ```json
 {
-    "email": "hong.gildong@example.com",
-    "password": "any_password"
+    "name": "Hong Gildong"
 }
 ```
 
 #### Responses
-- `401 Invalid credentials`: Wrong email or password
+- `401 Invalid credentials`: Wrong name
 - `200 OK`: Successfully logged in
 
 ### getUser
