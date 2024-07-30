@@ -12,8 +12,8 @@ router.post('/signup',
             .isEmpty()
             .withMessage('Name is required.'),
         check('gender')
-            .isIn(['Male', 'Female', 'Other'])
-            .withMessage('Gender must be one of Male, Female, or Other.')
+            .isIn(['male', 'female', 'other'])
+            .withMessage('Gender must be one of male, female, or other.')
     ],
     signup);
 

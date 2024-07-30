@@ -53,13 +53,13 @@
 - **Request Type**: POST
 - **Required Fields**:
     - `name`: User's name
-    - `gender`: User's gender, the options are `Male`, `Female`, and `Other`
+    - `gender`: User's gender, the options are `male`, `female`, and `other`
 
 #### Request Example:
 ```json
 {
     "name": "Hong Gildong",
-    "gender": "Male"
+    "gender": "male"
 }
 ```
 
