@@ -1,4 +1,5 @@
 const Diary = require('../models/diary');
+const User = require('../models/user');
 const HttpError = require('../models/http-error');
 const { validationResult } = require('express-validator');
 
@@ -39,11 +40,34 @@ const createDiary = async (req, res, next) => {
     res.status(201).json({ postId: newDiary.id, diary: newDiary });
 };
 
+const checkUserExists = async (userId) => {
+    let existingUser;
+    try {
+        existingUser = await User.findOne({ _id: userId }, '-password');
+        if (!existingUser) {
+            throw new HttpError('User does not exist', 404);
+        }
+    } catch (err) {
+        if (err instanceof HttpError) {
+            throw err;
+        }
+        throw new HttpError('Fetching user failed, please try again later.', 500);
+    }
+    return existingUser;
+};
+
 //GET diary by postid
 const retrieveDiary = async (req, res, next) => {
     let existingDiary;
+
     try {
-        existingDiary = await Diary.findOne({ _id: req.params.pid }).populate('userid', '-password');
+        await checkUserExists(req.params.uid);
+    } catch (err) {
+        return next(err);
+    }
+
+    try {
+        existingDiary = await Diary.findOne({ _id: req.params.pid, userid: req.params.uid }).populate('userid', '-password');
         if (!existingDiary) next(new HttpError(
             'Diary does not exist',
             400
@@ -65,6 +89,13 @@ const getDiaries = async (req, res, next) => {
     let totalDiaries;
     let result;
 
+    // Uncomment to not let the system get diaries of dummy users (users who's userId is not real)
+    // try {
+    //     await checkUserExists(req.params.uid);
+    // } catch (err) {
+    //     return next(err);
+    // }
+
     try {
         const page = parseInt(req.query.page);
         const limit = parseInt(req.query.limit);
@@ -72,8 +103,8 @@ const getDiaries = async (req, res, next) => {
         if (page < 0 || limit < 0) throw '';
         const startIndex = (page - 1) * limit;
 
-        diaries = await Diary.find().skip(startIndex).limit(limit);
-        totalDiaries = await Diary.find({}).count();
+        diaries = await Diary.find({ userid: req.params.uid }).skip(startIndex).limit(limit);
+        totalDiaries = await Diary.find({ userid: req.params.uid }).count();
 
         result = {
             diaries: diaries.map(diary => diary.toObject({ getters: true })),

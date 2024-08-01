@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 const getUser = async (req, res, next) => {
     let existingUser;
     try {
-        existingUser = await User.findOne({ _id: req.params.uid }, '-password').populate('courses', '-source');
+        existingUser = await User.findOne({ _id: req.params.uid }, '-password');
         if (!existingUser) next(new HttpError(
             'User does not exist',
             400

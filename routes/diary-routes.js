@@ -29,8 +29,8 @@ router.post('/create',
     createDiary
 );
 
-router.get('/:pid', retrieveDiary);
+router.get('/:uid/:pid', retrieveDiary);
 
-router.get('/', getDiaries);
+router.get('/:uid', getDiaries);
 
 module.exports = router;

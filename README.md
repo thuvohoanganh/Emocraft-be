@@ -14,7 +14,7 @@
 3. [Diary API](#diary-api)
     - [Create a Diary Entry](#create-a-diary-entry)
     - [Retrieve a Diary Entry](#retrieve-a-diary-entry)
-    - [Retrieve all Diary Entries](#retrieve-all-diary-entries)
+    - [Retrieve all Diary Entries of a User](#retrieve-all-diary-entries)
 
 ## ChatGPT API
 
@@ -147,17 +147,21 @@
 
 ### Retrieve a Diary Entry
 
-#### Endpoint: `/api/diary/(diary id)`
+#### Endpoint: `/api/diary/(user id)/(diary id)`
 
-- **Description**: Retrieve the diary details from the id
+- **Description**: Retrieve the diary details of a diary entry of a user
 - **Request Type**: GET
 
 #### Responses
+- `400 User does not exist`: There is no user associated with the user id
 - `400 Diary does not exist`: There is no diary entry associated with the diary id
 
 ### Retrieve all Diary Entries
 
-#### Endpoint: `api/diary/`
+#### Endpoint: `api/diary/(user id)`
 
-- **Description**: Retrieve all diary entries with pagination
+- **Description**: Retrieve all diary entries of a user with pagination
 - **Request Type**: GET
+
+#### Responses
+- `400 User does not exist`: There is no user associated with the user id
