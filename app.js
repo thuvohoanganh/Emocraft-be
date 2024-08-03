@@ -54,8 +54,9 @@ app.use((error, req, res, next) => {
   });
 });
 
+const DB_CONNECT_STRING = `mongodb+srv://${process.env.MONGODB_ICLAB_USERNAME}:${(process.env.MONGODB_ICLAB_PASSWORD)}@cluster0.hwlfqv1.mongodb.net/diary?retryWrites=true&w=majority&appName=Cluster0`
 mongoose
-  .connect(`mongodb://${process.env.MONGODB_ICLAB_USERNAME}:${encodeURIComponent(process.env.MONGODB_ICLAB_PASSWORD)}@deploy.iclab.dev:6000/abc`)
+  .connect(DB_CONNECT_STRING)
   .then(() => {
     app.listen(process.env.PORT || 8000);
   })
