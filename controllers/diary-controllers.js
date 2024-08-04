@@ -124,8 +124,84 @@ const getDiaries = async (req, res, next) => {
     res.json(result);
 };
 
+const updateDiary = async (req, res, next) => {
+    const { uid, pid } = req.params;
+    const { timestamp, content, emotions, people, location, dialog, images, createdAt } = req.body;
+
+    let existingDiary;
+    
+    try {
+        await checkUserExists(uid);
+    } catch (err) {
+        return next(err);
+    }
+
+    try {
+        existingDiary = await Diary.findOne({ _id: pid, userid: uid });
+        if (!existingDiary) next(new HttpError(
+            'Diary does not exist',
+            400
+        ))
+
+        if (timestamp !== undefined) existingDiary.timestamp = timestamp;
+        if (content !== undefined) existingDiary.content = content;
+        if (emotions !== undefined) existingDiary.emotions = emotions;
+        if (people !== undefined) existingDiary.people = people;
+        if (location !== undefined) existingDiary.location = location;
+        if (dialog !== undefined) existingDiary.dialog = JSON.stringify(dialog);
+        if (images !== undefined) existingDiary.images = images;
+        
+        existingDiary.createdAt = new Date();
+
+        await existingDiary.save();
+
+    } catch (err) {
+        err && console.error(err);
+        const error = new HttpError(
+            'Retrieving diary entry failed, please try again later.',
+            500
+        );
+        return next(error);
+    }
+
+    res.status(200).json({ message: 'Diary updated', diary: existingDiary });
+};
+
+const deleteDiary = async (req, res, next) => {
+    const { uid, pid } = req.params;
+
+    let existingDiary;
+    
+    try {
+        await checkUserExists(uid);
+    } catch (err) {
+        return next(err);
+    }
+
+    try {
+        existingDiary = await Diary.findOne({ _id: pid, userid: uid });
+        if (!existingDiary) next(new HttpError(
+            'Diary does not exist',
+            400
+        ))
+
+        await existingDiary.remove();
+
+    } catch (err) {
+        const error = new HttpError(
+            'Retrieving diary entry failed, please try again later.',
+            500
+        );
+        return next(error);
+    }
+
+    res.status(200).json({ message: 'Diary deleted', postId: existingDiary.id });
+}
+
 module.exports = {
     createDiary,
     retrieveDiary,
-    getDiaries
+    getDiaries,
+    updateDiary,
+    deleteDiary
 };
