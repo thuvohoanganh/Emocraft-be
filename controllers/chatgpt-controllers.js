@@ -10,6 +10,8 @@ const openai = new OpenAI({
 const emotionsRecognize = async (req, res, next) => {
     const diary = req.body.diary
     const dialog = req.body.dialog
+    // console.log("diary", diary)
+
     let response = await generateResponse(diary, dialog, "")
     if (response === "") {
         const error = new HttpError(
@@ -25,18 +27,23 @@ const emotionsRecognize = async (req, res, next) => {
 }
 
 const generateResponse = async (diary, dialog, phase = "") => {
-    let response = 0
+    let response = ""
+    const messages = [
+        { role: "system", content: `You are an emotion analyzing assistant, capable of understanding the sentiment within text. You are trying to understand my emotion from my diary. Only use emotions in this list: ${EMOTION_LIST}. You give me an analysis and I give you my feedback. 
+            If user give you diary, list out user's emotion with reasonning.
+            If user are unsatisfied with your opinion, ask more question about experience relating to user emotion and the cause of those emotions.
+            If user give you more information about their emotion, tell them the other analysis based on their responses and ask their agreement.
+            If user agree with you analysis, summarize the emotions they really have based on their responses. Then tell them to click like button to finish section. 
+            My diary: ${diary}
+        `},
+    ]
+    if (dialog?.length > 0) {
+        messages.concat(dialog)
+    }
+
     try {
         const chatCompletions = await openai.chat.completions.create({
-            messages: [
-                { role: "system", content: `You are an emotion analyzing assistant, capable of understanding the sentiment within text. You are trying to understand my emotion from my diary. Only use emotions in this list: ${EMOTION_LIST}. You give me an analysis and I give you my feedback. 
-                    If user give you diary, list out user's emotion with reasonning. Empasize the emotion words by <em> tag. Example: <em>happy</em>.
-                    If user are unsatisfied with your opinion, ask more question about experience relating to user emotion and the cause of those emotions.
-                    If user give you more information about their emotion, tell them the other analysis based on their responses and ask their agreement.
-                    If user agree with you analysis, summarize the emotions they really have based on their responses. Empasize the emotion words by <em> tag. Example: <em>happy</em>. Then tell them to click like button to finish section. 
-                `},
-                ...dialog
-            ],
+            messages,
             model: "gpt-4",
         });
 
