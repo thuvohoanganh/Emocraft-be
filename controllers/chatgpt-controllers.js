@@ -1,19 +1,40 @@
 const HttpError = require('../models/http-error');
-const OpenAI = require("openai")
-const dotenv = require("dotenv")
-const { EMOTION_LIST } = require("../constant")
-dotenv.config()
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+const {
+    checkCriteriaExplorePhase,
+    checkCriteriaFeedbackPhase,
+    generateResponseExplorePhase,
+    generateExplanationPhase
 
-const emotionsRecognize = async (req, res, next) => {
+} = require('./phase-controller');
+const { PHASE_LABEL } = require('../constant')
+
+const chatbotConversation = async (req, res, next) => {
     const diary = req.body.diary
     const dialog = req.body.dialog
-    // console.log("diary", diary)
+    const currentPhase = req.body.phase
+    let response = {
+        phase: "",
+        content: "",
+        analysis: null
+    }
+    let error = null
+    let nextPhase = currentPhase
+    let summary = null
 
-    let response = await generateResponse(diary, dialog, "")
-    if (response === "") {
+    // Check criteria in current phase
+    if (currentPhase === PHASE_LABEL.EXPLORE) {
+        const result = await checkCriteriaExplorePhase(diary, dialog)
+        console.log("result", result)
+        nextPhase = result.next_phase
+        error = result.error
+        summary = result.summary
+    } else if (currentPhase === PHASE_LABEL.FEEDBACK) {
+        const result = await checkCriteriaFeedbackPhase(diary, dialog)
+        nextPhase = result.next_phase
+        error = result.error
+        summary = result.summary
+    }
+    if (!!error) {
         const error = new HttpError(
             'chat fail',
             500
@@ -21,41 +42,38 @@ const emotionsRecognize = async (req, res, next) => {
         return next(error);
     }
 
+    console.log("nextPhase", nextPhase)
+    console.log("summary", summary)
+
+    // generate response
+    if (nextPhase === PHASE_LABEL.EXPLORE) {
+        const result = await generateResponseExplorePhase(diary, dialog, summary)
+        console.log("result", result)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+    } else if (nextPhase === PHASE_LABEL.EXPLAIN) {
+        const result = await generateExplanationPhase(diary, dialog)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+        response.analysis = result.analysis
+    } else if (nextPhase === PHASE_LABEL.FEEDBACK) {
+
+    }
+    if (!!error) {
+        const error = new HttpError(
+            'chat fail',
+            500
+        );
+        return next(error);
+    }
+
+    console.log("response", response)
+    console.log('------------------------------')
     res.status(200).json({
         data: response
     });
-}
-
-const generateResponse = async (diary, dialog, phase = "") => {
-    let response = ""
-    const messages = [
-        { role: "system", content: `You are an emotion analyzing assistant, capable of understanding the sentiment within text. You are trying to understand my emotion from my diary. Only use emotions in this list: ${EMOTION_LIST}. You give me an analysis and I give you my feedback. 
-            If user give you diary, list out user's emotion with reasonning.
-            If user are unsatisfied with your opinion, ask more question about experience relating to user emotion and the cause of those emotions.
-            If user give you more information about their emotion, tell them the other analysis based on their responses and ask their agreement.
-            If user agree with you analysis, summarize the emotions they really have based on their responses. Then tell them to click like button to finish section. 
-            My diary: ${diary}
-        `},
-    ]
-    if (dialog?.length > 0) {
-        messages.concat(dialog)
-    }
-
-    try {
-        const chatCompletions = await openai.chat.completions.create({
-            messages,
-            model: "gpt-4",
-        });
-
-        response = chatCompletions?.choices?.[0]?.message?.content
-        if (!response) {
-            throw ("no response from ChatGPT")
-        }
-    } catch (err) {
-        console.log(err)
-        return ""
-    }
-    return response
 }
 
 const predictContextualInfor = async (req, res, next) => {
@@ -104,7 +122,7 @@ const generateImage = async (req, res, next) => {
             quality: "standard",
             n: 1,
         })
-          
+
         image_url = response.data[0].url
         console.log(image_url)
         if (!image_url) {
@@ -123,8 +141,10 @@ const generateImage = async (req, res, next) => {
     });
 }
 
+
 module.exports = {
     predictContextualInfor,
-    emotionsRecognize,
+    chatbotConversation,
     generateImage
 }
+
