@@ -24,7 +24,7 @@ const chatbotConversation = async (req, res, next) => {
     // Check criteria in current phase
     if (currentPhase === PHASE_LABEL.EXPLORE) {
         const result = await checkCriteriaExplorePhase(diary, dialog)
-        console.log("result", result)
+        console.log("checkCriteriaExplorePhase", result)
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
@@ -58,6 +58,7 @@ const chatbotConversation = async (req, res, next) => {
         response.phase = result.phase
         response.content = result.content
         response.analysis = result.analysis
+        response.rationale = result.rationale
     } else if (nextPhase === PHASE_LABEL.FEEDBACK) {
 
     }
