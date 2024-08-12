@@ -11,7 +11,8 @@ const EMOTION_LABEL = {
 const PHASE_LABEL = {
     EXPLORE: "explore",
     EXPLAIN: "explain",
-    FEEDBACK: "feedback"
+    FEEDBACK: "feedback",
+    END: "end"
 }
 
 module.exports = {

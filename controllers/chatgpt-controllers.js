@@ -3,7 +3,8 @@ const {
     checkCriteriaExplorePhase,
     checkCriteriaFeedbackPhase,
     generateResponseExplorePhase,
-    generateExplanationPhase
+    generateExplanationPhase,
+    generateFeedbackPhase
 
 } = require('./phase-controller');
 const { PHASE_LABEL } = require('../constant')
@@ -15,7 +16,7 @@ const chatbotConversation = async (req, res, next) => {
     let response = {
         phase: "",
         content: "",
-        analysis: null
+        analysis: null,
     }
     let error = null
     let nextPhase = currentPhase
@@ -28,12 +29,15 @@ const chatbotConversation = async (req, res, next) => {
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
-    } else if (currentPhase === PHASE_LABEL.FEEDBACK) {
-        const result = await checkCriteriaFeedbackPhase(diary, dialog)
-        nextPhase = result.next_phase
-        error = result.error
-        summary = result.summary
-    }
+    } else if (currentPhase === PHASE_LABEL.EXPLAIN) {
+        nextPhase = PHASE_LABEL.FEEDBACK
+    } 
+    // else if (currentPhase === PHASE_LABEL.FEEDBACK) {
+    //     const result = await checkCriteriaFeedbackPhase(diary, dialog)
+    //     nextPhase = result.next_phase
+    //     error = result.error
+    //     summary = result.summary
+    // }
     if (!!error) {
         const error = new HttpError(
             'chat fail',
@@ -60,7 +64,10 @@ const chatbotConversation = async (req, res, next) => {
         response.analysis = result.analysis
         response.rationale = result.rationale
     } else if (nextPhase === PHASE_LABEL.FEEDBACK) {
-
+        const result = await generateFeedbackPhase(diary, dialog)
+        error = result.error
+        response.phase = result.end ? PHASE_LABEL.END : result.phase
+        response.content = result.content
     }
     if (!!error) {
         const error = new HttpError(

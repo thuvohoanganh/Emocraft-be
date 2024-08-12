@@ -91,7 +91,7 @@ const generateResponseExplorePhase = async (diary, dialog, summary) => {
     `- Empathize the user's emotion by restating how they felt.
     - Separate the empathy and the questions with line break.`
     ) : ""}
-    - Chosse 1 missing information (null) and ask 1 question.
+    - Choose only 1 missing information (null) and ask 1 question.
     
 Dialog summary: 
 key_episode: ${summary.key_episode},
@@ -117,7 +117,7 @@ const generateExplanationPhase = async (diary, dialog) => {
     Return response with JSON format with the following properties:
     (1) content: you should show empathy and tell user how you feel about their emotion and reason why.
     (2) analysis: assest user's emotions based on 6 basic emotions (${EMOTION_LIST}) from 0 to 5
-    (3) rationale: Describe your rationale on how the "analysis" properties were derived.
+    (3) rationale: Describe to user your rationale on how the "analysis" properties were derived.
     {
         "content": string,
         "analysis": {
@@ -146,6 +146,46 @@ const generateExplanationPhase = async (diary, dialog) => {
             response.content = res.content
             response.analysis = res.analysis
             response.rationale = res.rationale
+        } else {
+            throw("error: wrong response format function generateResponse")
+        }
+    } catch {
+        if (!_res) {
+            response.error = "ChatGPT failed"
+        } else {
+            response.error = "ChatGPT return wrong format"
+        }
+    }
+    return response
+}
+
+const generateFeedbackPhase = async (diary, dialog) => {
+    const instruction = `You are and psychologist. you are good at emotion awareness and you can understand where human emotion come from based on user's diary.
+    - Given a dialogue history and user's diary, do they agree or disagree with what you told them?
+    - If user are satisfied with the analysis, say thank and goodbye to them.
+    - If user give you feedback, acknowledge and tell them how you understand their feelings after feedback. Then ask them if they have other things to share.
+    - If the user has nothing to share or byes, say thank and goodbye to them.
+    - Use JSON format with the following properties:
+    (1) content: your response to user
+    (2) end: you say bye to user or not
+        {
+            "content": string,
+            "end": boolean
+        }
+    `
+    const response = {
+        error: "",
+        phase: PHASE_LABEL.FEEDBACK,
+        content: "",
+        end: false
+    }
+    const _res =  await generateResponse(diary, dialog, instruction)
+
+    try {
+        const res = JSON.parse(_res)
+        if (res.content && res.analysis) {
+            response.content = res.content
+            response.end = res.end
         } else {
             throw("error: wrong response format function generateResponse")
         }
@@ -222,6 +262,7 @@ module.exports = {
     checkCriteriaExplorePhase,
     checkCriteriaFeedbackPhase,
     generateResponseExplorePhase,
-    generateExplanationPhase
+    generateExplanationPhase,
+    generateFeedbackPhase
 }
 
