@@ -8,6 +8,11 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
+const GENERAL_SPEAKING_RULES = `
+- do not use double quotes at the start and the end of the response.
+- Do not include any "tip:", "question:" etc and do not use hashtags. 
+`
+
 const checkCriteriaExplorePhase = async (diary, dialog) => {
     const response = {
         error: "",
@@ -92,7 +97,8 @@ const generateResponseExplorePhase = async (diary, dialog, summary) => {
     - Separate the empathy and the questions with line break.`
     ) : ""}
     - Choose only 1 missing information (null) and ask 1 question.
-    
+    ${GENERAL_SPEAKING_RULES}
+
 Dialog summary: 
 key_episode: ${summary.key_episode},
 user_emotion:  ${summary.user_emotion}, 
@@ -183,7 +189,7 @@ const generateFeedbackPhase = async (diary, dialog) => {
 
     try {
         const res = JSON.parse(_res)
-        if (res.content && res.analysis) {
+        if (res.content) {
             response.content = res.content
             response.end = res.end
         } else {
@@ -201,13 +207,17 @@ const generateFeedbackPhase = async (diary, dialog) => {
 
 const generateResponse = async (diary, dialog, instruction) => {
     let response = ""
+    const _dialog = dialog.map(e => ({
+        ...e,
+        content: JSON.stringify(e.content)
+    }))
     const messages = [
         {
             role: "system",
             content: `${instruction} 
             User's diary: ${diary}`
         },
-        ...dialog
+        ..._dialog
     ]
 
     try {
