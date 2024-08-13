@@ -1,4 +1,7 @@
+const OpenAI = require("openai")
 const HttpError = require('../models/http-error');
+const Diary = require('../models/diary');
+const User = require('../models/user');
 const {
     checkCriteriaExplorePhase,
     checkCriteriaFeedbackPhase,
@@ -8,6 +11,10 @@ const {
 
 } = require('./phase-controller');
 const { PHASE_LABEL } = require('../constant')
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
 
 const chatbotConversation = async (req, res, next) => {
     const diary = req.body.diary
@@ -149,10 +156,92 @@ const generateImage = async (req, res, next) => {
     });
 }
 
+const checkUserExists = async (userId) => {
+    let existingUser;
+    try {
+        existingUser = await User.findOne({ _id: userId }, '-password');
+        if (!existingUser) {
+            throw new HttpError('User does not exist', 404);
+        }
+    } catch (err) {
+        if (err instanceof HttpError) {
+            throw err;
+        }
+        throw new HttpError('Fetching user failed, please try again later.', 500);
+    }
+    return existingUser;
+};
+
+// weekly summary
+const generateWeeklySummary = async (req, res, next) => {
+    const { uid } = req.params;
+
+    try {
+        await checkUserExists(uid);
+    } catch (err) {
+        return next(err);
+    }
+
+    let startingDate = new Date();
+    startingDate.setDate(startingDate.getDate() - 7);
+
+    let diaries;
+    try {
+        diaries = await Diary.find({
+            userid: uid,
+            timestamp: { $gte: startingDate }
+        });
+    } catch (err) {
+        err && console.log(err);
+        const error = new HttpError(
+            'Fetching diaries failed, please try again later.',
+            500
+        );
+        return next(error);
+    }
+
+    if (!diaries || diaries.length === 0) {
+        const error = new HttpError(
+            'No diaries found for the last week.', 404
+        );
+        return next(error);
+    }
+
+    const contentToSummarize = diaries.map(diary => {
+        const date = new Date(diary.timestamp).toLocaleString(); // Format timestamp to a readable format
+        return `On ${date}: ${diary.content}`;
+    }).join("\n\n");
+
+    let summary;
+    try {
+        const response = await openai.chat.completions.create({
+            messages: [{
+                role: "user",
+                content: `I wrote some diary entries for this past week.
+                I want to understand my experiences and emotions better based on the diaries I wrote. 
+                Please summarize them into a coherent paragraph in this format: the top emotions I felt and the related experiences.
+                Do not include any dates in the summary, try to make it short and easy to understand, and use you as the pronoun instead of I.
+                Here are the entries:\n\n${contentToSummarize}`
+            }],
+            model: "gpt-3.5-turbo"
+        });
+        summary = response.choices[0].message.content.trim();
+    } catch (err) {
+        err && console.error(err);
+        const error = new HttpError(
+            'Summarizing diaries failed, please try again later.',
+            500
+        );
+        return next(error);
+    }
+
+    res.status(200).json({ summary });
+};
 
 module.exports = {
     predictContextualInfor,
     chatbotConversation,
-    generateImage
+    generateImage,
+    generateWeeklySummary
 }
 
