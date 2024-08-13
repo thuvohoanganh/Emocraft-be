@@ -39,12 +39,7 @@ const chatbotConversation = async (req, res, next) => {
     } else if (currentPhase === PHASE_LABEL.EXPLAIN) {
         nextPhase = PHASE_LABEL.FEEDBACK
     } 
-    // else if (currentPhase === PHASE_LABEL.FEEDBACK) {
-    //     const result = await checkCriteriaFeedbackPhase(diary, dialog)
-    //     nextPhase = result.next_phase
-    //     error = result.error
-    //     summary = result.summary
-    // }
+
     if (!!error) {
         const error = new HttpError(
             'chat fail',
@@ -77,11 +72,12 @@ const chatbotConversation = async (req, res, next) => {
         response.content = result.content
     }
     if (!!error) {
-        const error = new HttpError(
+        console.log("chatbotConversation error: ", error)
+        const errorResponse = new HttpError(
             'chat fail',
             500
         );
-        return next(error);
+        return next(errorResponse);
     }
 
     console.log("response", response)
