@@ -13,7 +13,7 @@ const createDiary = async (req, res, next) => {
     }
 
     const { userid, timestamp, content } = req.body;
-    
+
     let newDiary;
     try {
         newDiary = new Diary({
@@ -62,11 +62,12 @@ const retrieveDiary = async (req, res, next) => {
 
     try {
         existingDiary = await Diary.findOne({ _id: req.params.pid, userid: req.params.uid })
-        if (!existingDiary) next(new HttpError(
-            'Diary does not exist',
-            400
-        ))
-
+        if (!existingDiary) {
+            next(new HttpError(
+                'Diary does not exist',
+                400
+            ))
+        }
     } catch (err) {
         const error = new HttpError(
             'Retrieving diary entry failed, please try again later.',
@@ -74,7 +75,7 @@ const retrieveDiary = async (req, res, next) => {
         );
         return next(error);
     }
-    
+
     res.json({ ...existingDiary._doc });
 };
 
@@ -83,7 +84,7 @@ const getDiaries = async (req, res, next) => {
     let totalDiaries;
     let result;
     const { uid } = req.params
-    
+
     // Uncomment to not let the system get diaries of dummy users (users who's userId is not real)
     // try {
     //     await checkUserExists(uid);
@@ -124,7 +125,7 @@ const updateDiary = async (req, res, next) => {
     const { content, emotions, dialog, context } = req.body;
 
     let existingDiary;
-    
+
     try {
         await checkUserExists(uid);
     } catch (err) {
@@ -142,7 +143,7 @@ const updateDiary = async (req, res, next) => {
         if (emotions !== undefined) existingDiary.emotions = JSON.stringify(emotions);
         if (dialog !== undefined) existingDiary.dialog = JSON.stringify(dialog);
         if (context !== undefined) existingDiary.context = JSON.stringify(context);
-        
+
         existingDiary.createdAt = new Date();
 
         await existingDiary.save();
@@ -163,7 +164,7 @@ const deleteDiary = async (req, res, next) => {
     const { uid, pid } = req.params;
 
     let existingDiary;
-    
+
     try {
         await checkUserExists(uid);
     } catch (err) {

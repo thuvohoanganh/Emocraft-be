@@ -11,6 +11,7 @@ const {
 
 } = require('./phase-controller');
 const { PHASE_LABEL } = require('../constant')
+const { validationResult } = require('express-validator');
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -20,12 +21,13 @@ const chatbotConversation = async (req, res, next) => {
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
+        console.log("chatbotConversation err:", errors)
         return next(
             new HttpError(JSON.stringify(errors), 422)
         );
     }
 
-    const userId = red.body.user_id
+    const userId = req.body.userid
     const diary = req.body.diary
     const dialog = req.body.dialog
     const currentPhase = req.body.phase

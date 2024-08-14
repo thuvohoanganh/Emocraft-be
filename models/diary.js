@@ -16,7 +16,7 @@ const DiarySchema = new mongoose.Schema({
         type: String //stringify Object
     },
     context: {
-        type: string
+        type: String
     },
     dialog: {
         type: String //stringify the JSON dialog

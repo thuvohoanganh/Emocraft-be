@@ -2,13 +2,13 @@ const express = require('express');
 const router = express.Router();
 const chatgptController = require('../controllers/chatgpt-controllers');
 const { predictContextualInfor, chatbotConversation, generateImage, generateWeeklySummary } = chatgptController;
-const { checkAuthUser } = require('../middleware/check-auth');
+const { check } = require('express-validator');
 
 router.post('/emotions-recognition', [
-    check('user_id')
+    check('userid')
         .not()
         .isEmpty(),
-    check('diary_id')
+    check('diaryid')
         .not()
         .isEmpty(),
 ], chatbotConversation);
