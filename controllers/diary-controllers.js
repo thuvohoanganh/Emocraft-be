@@ -12,7 +12,7 @@ const createDiary = async (req, res, next) => {
         );
     }
 
-    const { userid, timestamp, content, emotions, people, location, dialog, images, createdAt } = req.body;
+    const { userid, timestamp, content } = req.body;
     
     let newDiary;
     try {
@@ -20,12 +20,6 @@ const createDiary = async (req, res, next) => {
             userid,
             timestamp,
             content,
-            emotions,
-            people,
-            location,
-            dialog: JSON.stringify(dialog),
-            images,
-            createdAt
         });
         await newDiary.save();
     } catch (err) {
@@ -67,7 +61,7 @@ const retrieveDiary = async (req, res, next) => {
     }
 
     try {
-        existingDiary = await Diary.findOne({ _id: req.params.pid, userid: req.params.uid }).populate('userid', '-password');
+        existingDiary = await Diary.findOne({ _id: req.params.pid, userid: req.params.uid })
         if (!existingDiary) next(new HttpError(
             'Diary does not exist',
             400
@@ -88,10 +82,11 @@ const getDiaries = async (req, res, next) => {
     let diaries;
     let totalDiaries;
     let result;
-
+    const { uid } = req.params
+    
     // Uncomment to not let the system get diaries of dummy users (users who's userId is not real)
     // try {
-    //     await checkUserExists(req.params.uid);
+    //     await checkUserExists(uid);
     // } catch (err) {
     //     return next(err);
     // }
@@ -103,8 +98,8 @@ const getDiaries = async (req, res, next) => {
         if (page < 0 || limit < 0) throw '';
         const startIndex = (page - 1) * limit;
 
-        diaries = await Diary.find({ userid: req.params.uid }).skip(startIndex).limit(limit);
-        totalDiaries = await Diary.find({ userid: req.params.uid }).count();
+        diaries = await Diary.find({ userid: uid }).skip(startIndex).limit(limit);
+        totalDiaries = await Diary.find({ userid: uid }).count();
 
         result = {
             diaries: diaries.map(diary => diary.toObject({ getters: true })),
@@ -126,7 +121,7 @@ const getDiaries = async (req, res, next) => {
 
 const updateDiary = async (req, res, next) => {
     const { uid, pid } = req.params;
-    const { timestamp, content, emotions, people, location, dialog, images, createdAt } = req.body;
+    const { content, emotions, dialog, context } = req.body;
 
     let existingDiary;
     
@@ -143,13 +138,10 @@ const updateDiary = async (req, res, next) => {
             400
         ))
 
-        if (timestamp !== undefined) existingDiary.timestamp = timestamp;
         if (content !== undefined) existingDiary.content = content;
-        if (emotions !== undefined) existingDiary.emotions = emotions;
-        if (people !== undefined) existingDiary.people = people;
-        if (location !== undefined) existingDiary.location = location;
+        if (emotions !== undefined) existingDiary.emotions = JSON.stringify(emotions);
         if (dialog !== undefined) existingDiary.dialog = JSON.stringify(dialog);
-        if (images !== undefined) existingDiary.images = images;
+        if (context !== undefined) existingDiary.context = JSON.stringify(context);
         
         existingDiary.createdAt = new Date();
 

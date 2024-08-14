@@ -17,6 +17,15 @@ const openai = new OpenAI({
 });
 
 const chatbotConversation = async (req, res, next) => {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+        return next(
+            new HttpError(JSON.stringify(errors), 422)
+        );
+    }
+
+    const userId = red.body.user_id
     const diary = req.body.diary
     const dialog = req.body.dialog
     const currentPhase = req.body.phase

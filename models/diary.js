@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
 
 const DiarySchema = new mongoose.Schema({
     userid: {
@@ -14,19 +13,13 @@ const DiarySchema = new mongoose.Schema({
         type: String
     },
     emotions: {
-        type: [String]
+        type: String //stringify Object
     },
-    people: {
-        type: [String]
-    },
-    location: {
-        type: String
+    context: {
+        type: string
     },
     dialog: {
         type: String //stringify the JSON dialog
-    },
-    images: {
-        type: [String]
     },
     createdAt: {
         type: Date,

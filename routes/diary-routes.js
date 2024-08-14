@@ -14,17 +14,7 @@ router.post('/create',
             .isEmpty(),
         check('content')
             .not()
-            .isEmpty(),
-        check('emotions')
-            .isArray(),
-        check('people')
-            .isArray(),
-        // check('dialog')
-        //     .optional()
-        //     .isObject(),
-        check('images')
-            .optional()
-            .isArray()
+            .isEmpty()
     ],
     createDiary
 );
@@ -33,23 +23,7 @@ router.get('/:uid/:pid', retrieveDiary);
 
 router.get('/:uid', getDiaries);
 
-router.patch('/:uid/:pid', 
-    [
-        check('emotions')
-            .optional()
-            .isArray(),
-        check('people')
-            .optional()
-            .isArray(),
-        // check('dialog')
-        //     .optional()
-        //     .isObject(),
-        check('images')
-            .optional()
-            .isArray()
-    ],
-    updateDiary
-);
+router.patch('/:uid/:pid', updateDiary);
 
 router.delete('/:uid/:pid', deleteDiary)
 
