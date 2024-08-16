@@ -35,7 +35,7 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
   (1) key_episode: a key episode that the user described.
   (2) user_emotion: the emotion of the user caused by the key episode. Make sure the emotion is connected to (1)
   (3) location: where did event happen (e.g. home, office). Only extract text written by user, do not predict.
-  (4) people: who were involved in the event and contribute to user's emotion (e.g. alone, friend). Only extract text writtent by user, do not predict.
+  (4) people: who were involved in the event and contribute to user's emotion (e.g. alone, friend). Only extract text written by user, do not predict.
   (5) move_to_next: When (1) and (2) and (3) and (4) are not null or user don't want to answer your questions, you can go to the next step.
   (6) rationale: Describe your rationale on how the above properties were derived.
   (7) empathized: you have showed your empathy to user or not. yes is true, no is false
@@ -108,7 +108,7 @@ rationale: ${summary.rationale}
 }
 
 const generateExplanationPhase = async (diary, dialog) => {
-    const instruction = `You are and psychologist. you are good at emotion awareness and you can understand where human emotion come from based on user's diary, tell the user how you feel about their emotions and reason why.
+    const instruction = `You are a psychologist. you are good at emotion awareness and you can understand where human emotion come from based on user's diary, tell the user how you feel about their emotions and reason why.
     Return response with JSON format with the following properties:
     (1) content: you should show empathy and tell user how you feel about their emotion and reason why.
     (2) analysis: assess user's emotions based on 6 basic emotions (${EMOTION_LIST}) from 0 to 5
@@ -155,7 +155,7 @@ const generateExplanationPhase = async (diary, dialog) => {
 }
 
 const generateFeedbackPhase = async (diary, dialog) => {
-    const instruction = `You are and psychologist. you are good at emotion awareness and you can understand where human emotion come from based on user's diary.
+    const instruction = `You are a psychologist. you are good at emotion awareness and you can understand where human emotion come from based on user's diary.
     - Given a dialogue history and user's diary, do they agree or disagree with what you told them?
     - If user are satisfied with the analysis, say thank and goodbye to them.
     - If user give you feedback, acknowledge and tell them how you understand their feelings after feedback. Then ask them if they have other things to share.

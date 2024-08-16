@@ -2,6 +2,7 @@ const OpenAI = require("openai")
 const HttpError = require('../models/http-error');
 const Diary = require('../models/diary');
 const User = require('../models/user');
+const Summary = require('../models/summary');
 const {
     checkCriteriaExplorePhase,
     generateResponseExplorePhase,
@@ -125,14 +126,41 @@ const generateWeeklySummary = async (req, res, next) => {
         return next(err);
     }
 
-    let startingDate = new Date();
-    startingDate.setDate(startingDate.getDate() - 7);
+    let today = new Date();
+    let lastMonday;
+    let lastSunday;
+
+    // Calculate the last Monday and last Sunday
+    lastMonday = new Date(today);
+    lastSunday = new Date(today);
+    lastMonday.setDate(today.getDate() - today.getDay() - 6);
+    lastMonday.setHours(0, 0, 0, 0);
+    lastSunday.setDate(lastMonday.getDate() + 6);
+    lastSunday.setHours(23, 59, 59, 999);
+
+    let existingSummary;
+    try {
+        existingSummary = await Summary.findOne({
+            userid: uid,
+            startdate: { $gte: lastMonday },
+            enddate: { $lte: lastSunday }
+        });
+    } catch (err) {
+        err && console.log(err);
+        return next(new HttpError('Fetching summary failed, please try again later.', 500));
+    }
+
+    // If summary already exists for the week, return it
+    if (existingSummary) {
+        return res.status(200).json(existingSummary);
+    }
+
 
     let diaries;
     try {
         diaries = await Diary.find({
             userid: uid,
-            timestamp: { $gte: startingDate }
+            timestamp: { $gte: lastMonday, $lte: lastSunday }
         });
     } catch (err) {
         err && console.log(err);
@@ -162,7 +190,7 @@ const generateWeeklySummary = async (req, res, next) => {
                 role: "user",
                 content: `I wrote some diary entries for this past week.
                 I want to understand my experiences and emotions better based on the diaries I wrote. 
-                Please summarize them into a coherent paragraph in this format: the top emotions I felt and the related experiences.
+                Please summarize them into a coherent paragraph and tell me what emotions I felt and why.
                 Do not include any dates in the summary, try to make it short and easy to understand, and use you as the pronoun instead of I.
                 Here are the entries:\n\n${contentToSummarize}`
             }],
@@ -178,7 +206,21 @@ const generateWeeklySummary = async (req, res, next) => {
         return next(error);
     }
 
-    res.status(200).json({ summary });
+    const newSummary = new Summary({
+        userid: uid,
+        content: summary,
+        startdate: lastMonday.toISOString(),
+        enddate: lastSunday.toISOString(),
+        emotions: ['joy', 'sadness'] // still a dummy
+    });
+
+    try {
+        await newSummary.save();
+    } catch (err) {
+        return next(new HttpError('Saving summary failed, please try again later.', 500));
+    }
+
+    res.status(200).json(newSummary);
 };
 
 module.exports = {
