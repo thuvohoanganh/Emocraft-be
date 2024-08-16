@@ -4,10 +4,9 @@ const Diary = require('../models/diary');
 const User = require('../models/user');
 const {
     checkCriteriaExplorePhase,
-    checkCriteriaFeedbackPhase,
     generateResponseExplorePhase,
     generateExplanationPhase,
-    generateFeedbackPhase
+    generateFeedbackPhase,
 
 } = require('./phase-controller');
 const { PHASE_LABEL } = require('../constant')
@@ -100,72 +99,6 @@ const chatbotConversation = async (req, res, next) => {
     return
 }
 
-
-const predictContextualInfor = async (req, res, next) => {
-    const diary = req.body.diary
-    const prompts = `You are an experienced diary study researcher. You are conducting a diary study right now, and when you receive my diary, you need to help the me to record some contextual information. These contextual information will be used as the cues for me to recall the event. Please predict the following contextual information based on the aforementioned information: 
-Location: predict three possible point of interest locations, you could use the point of interest location categories in Google Maps or some other location-based service apps. 
-People: select only one from these five categories, Alone, Families, Friends, Colleagues and Acquaintances, please keep the same spelling.
-Activity: give six descriptions of the six possible activities in this scenario (each description should be less than 50 characters). 
-Finally output these information in English in valid JSON format. And the value for the Location and Activity should be a list of three and six elements respectively. EXAMPLE: {"Location": [Library, Workspace, Meeting room], "People": Colleague, "Activity": [Working on laptop and taking notes, Studying or doing research, Planning or organizing tasks for the day, Preparing a meeting, Watching a academic seminar, Discussing the current project]}”
-My diary: ${diary}`
-
-    let response
-    try {
-        const chatCompletions = await openai.chat.completions.create({
-            messages: [{ role: "user", content: prompts }],
-            model: "gpt-3.5-turbo",
-        });
-
-        response = chatCompletions?.choices?.[0]?.message?.content
-        if (!prompts || !response) {
-            throw ("no response from ChatGPT")
-        }
-        response = JSON.parse(response)
-    } catch (err) {
-        const error = new HttpError(
-            'chat fail',
-            500
-        );
-        return next(error);
-    }
-
-
-    res.status(200).json({
-        data: response
-    });
-}
-
-const generateImage = async (req, res, next) => {
-    const diary = req.body.diary
-    let image_url = ""
-    try {
-        const response = await openai.images.generate({
-            model: "dall-e-3",
-            prompt: diary,
-            size: "1024x1024",
-            quality: "standard",
-            n: 1,
-        })
-
-        image_url = response.data[0].url
-        console.log(image_url)
-        if (!image_url) {
-            throw ("no response from ChatGPT")
-        }
-    } catch (err) {
-        console.log(err)
-        const error = new HttpError(
-            'chat fail',
-            500
-        );
-        return next(error);
-    }
-    res.status(200).json({
-        data: image_url
-    });
-}
-
 const checkUserExists = async (userId) => {
     let existingUser;
     try {
@@ -249,9 +182,7 @@ const generateWeeklySummary = async (req, res, next) => {
 };
 
 module.exports = {
-    predictContextualInfor,
     chatbotConversation,
-    generateImage,
     generateWeeklySummary
 }
 
