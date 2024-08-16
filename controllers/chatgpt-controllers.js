@@ -12,6 +12,7 @@ const {
 } = require('./phase-controller');
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
+const { updateDiarySummary } = require('./diary-controllers');
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -21,16 +22,13 @@ const chatbotConversation = async (req, res, next) => {
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
-        console.log("chatbotConversation err:", errors)
+        console.error("chatbotConversation err:", errors)
         return next(
             new HttpError(JSON.stringify(errors), 422)
         );
     }
 
-    const userId = req.body.userid
-    const diary = req.body.diary
-    const dialog = req.body.dialog
-    const currentPhase = req.body.phase
+    const {userid, diaryid, diary, dialog, phase: currentPhase } = req.body
     let response = {
         phase: "",
         content: "",
@@ -43,7 +41,6 @@ const chatbotConversation = async (req, res, next) => {
     // Check criteria in current phase
     if (currentPhase === PHASE_LABEL.EXPLORE) {
         const result = await checkCriteriaExplorePhase(diary, dialog)
-        console.log("checkCriteriaExplorePhase", result)
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
@@ -52,6 +49,7 @@ const chatbotConversation = async (req, res, next) => {
     } 
 
     if (!!error) {
+        console.error(error)
         const error = new HttpError(
             'chat fail',
             500
@@ -65,7 +63,6 @@ const chatbotConversation = async (req, res, next) => {
     // generate response
     if (nextPhase === PHASE_LABEL.EXPLORE) {
         const result = await generateResponseExplorePhase(diary, dialog, summary)
-        console.log("result", result)
         error = result.error
         response.phase = result.phase
         response.content = result.content
@@ -83,7 +80,7 @@ const chatbotConversation = async (req, res, next) => {
         response.content = result.content
     }
     if (!!error) {
-        console.log("chatbotConversation error: ", error)
+        console.error("chatbotConversation error: ", error)
         const errorResponse = new HttpError(
             'chat fail',
             500
@@ -91,12 +88,18 @@ const chatbotConversation = async (req, res, next) => {
         return next(errorResponse);
     }
 
+    if (currentPhase === PHASE_LABEL.EXPLORE && nextPhase === PHASE_LABEL.EXPLAIN) {
+        updateDiarySummary(userid, diaryid, summary)
+    }
+
     console.log("response", response)
     console.log('------------------------------')
     res.status(200).json({
         data: response
     });
+    return
 }
+
 
 const predictContextualInfor = async (req, res, next) => {
     const diary = req.body.diary

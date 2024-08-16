@@ -30,6 +30,7 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     const instruction = `- You are a helpful assistant that analyzes the content of the dialog history.
 - Given a dialogue history and user's diary, determine whether it is reasonable to move on to the next conversation phase or not.
 - Move to the next phase only when the user shared a key episode and you can figure out theri emotions about it.
+- Move to the next phase if you asked user more than 3 questions.
 - Use JSON format with the following properties:
   (1) key_episode: a key episode that the user described.
   (2) user_emotion: the emotion of the user caused by the key episode. Make sure the emotion is connected to (1)
@@ -57,7 +58,6 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
             response.next_phase = PHASE_LABEL.EXPLAIN
         }
         response.summary = res.summary
-        console.log("checkCriteria", response)
     } catch {
         if (!_res) {
             response.error = "ChatGPT failed"
@@ -70,17 +70,6 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     }
 
     return response
-}
-
-const checkCriteriaFeedbackPhase = async (diary, dialog) => {
-    return {
-        error: "",
-        summary: {
-            location: "",
-            people: "",
-        },
-        next_phase: ""
-    }
 }
 
 const generateResponseExplorePhase = async (diary, dialog, summary) => {
@@ -97,6 +86,7 @@ const generateResponseExplorePhase = async (diary, dialog, summary) => {
     - Separate the empathy and the questions with line break.`
     ) : ""}
     - Choose only 1 missing information (null) and ask 1 question.
+    - Response should be less than 50 words.
     ${GENERAL_SPEAKING_RULES}
 
 Dialog summary: 
@@ -107,7 +97,6 @@ location: ${summary.location}
 rationale: ${summary.rationale}
 `
     const res = await generateResponse(diary, dialog, instruction)
-    console.log("generateResponse", res)
     if (!res) {
         response.error = "ChatGPT failed"
         response.phase = PHASE_LABEL.EXPLORE
@@ -232,7 +221,7 @@ const generateResponse = async (diary, dialog, instruction) => {
             throw ("no response from ChatGPT")
         }
     } catch (err) {
-        console.log(err)
+        console.error(err)
         return ""
     }
     return response
@@ -261,7 +250,7 @@ const checkCriteria = async (diary, dialog, instruction) => {
             throw ("no response from ChatGPT")
         }
     } catch (err) {
-        console.log(err)
+        console.error(err)
         return ""
     }
     return response
@@ -270,7 +259,6 @@ const checkCriteria = async (diary, dialog, instruction) => {
 
 module.exports = {
     checkCriteriaExplorePhase,
-    checkCriteriaFeedbackPhase,
     generateResponseExplorePhase,
     generateExplanationPhase,
     generateFeedbackPhase

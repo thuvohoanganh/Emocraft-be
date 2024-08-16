@@ -63,7 +63,7 @@ const retrieveDiary = async (req, res, next) => {
     try {
         existingDiary = await Diary.findOne({ _id: req.params.pid, userid: req.params.uid })
         if (!existingDiary) {
-            next(new HttpError(
+            return next(new HttpError(
                 'Diary does not exist',
                 400
             ))
@@ -76,7 +76,11 @@ const retrieveDiary = async (req, res, next) => {
         return next(error);
     }
 
-    res.json({ ...existingDiary._doc });
+    res.json({ 
+        ...existingDiary._doc, 
+        emotions: existingDiary.emotions && JSON.parse(existingDiary.emotions),
+        dialog: existingDiary.dialog? JSON.parse(existingDiary.dialog) : []
+    });
 };
 
 const getDiaries = async (req, res, next) => {
@@ -103,7 +107,13 @@ const getDiaries = async (req, res, next) => {
         totalDiaries = await Diary.find({ userid: uid }).count();
 
         result = {
-            diaries: diaries.map(diary => diary.toObject({ getters: true })),
+            diaries: diaries.map(diary => {
+                const _diary = diary.toObject({ getters: true })
+                return {
+                    ..._diary,
+                    emotions: _diary.emotions && JSON.parse(_diary.emotions)
+                }
+            }),
             total_page: Math.ceil(totalDiaries / limit),
             current_page: page,
             total_diaries: totalDiaries
@@ -191,10 +201,26 @@ const deleteDiary = async (req, res, next) => {
     res.status(200).json({ message: 'Diary deleted', postId: existingDiary.id });
 }
 
+const updateDiarySummary = async (userId, diaryid, summary) => {
+    if (!userId || !diaryid || !summary) return
+    let existingDiary;
+
+    try {
+        existingDiary = await Diary.findOne({ _id: diaryid, userid: userId });
+        if(existingDiary) {
+            existingDiary.context = JSON.stringify(summary);
+            await existingDiary.save();
+        }
+    } catch (err) {
+        console.error("updateDiarySummary: ", err)
+        return
+    }
+}
 module.exports = {
     createDiary,
     retrieveDiary,
     getDiaries,
     updateDiary,
-    deleteDiary
+    deleteDiary,
+    updateDiarySummary
 };
