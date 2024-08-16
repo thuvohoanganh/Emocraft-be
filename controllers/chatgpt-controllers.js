@@ -192,6 +192,7 @@ const generateWeeklySummary = async (req, res, next) => {
         return next(err);
     }
 
+    let endingDate = new Date();
     let startingDate = new Date();
     startingDate.setDate(startingDate.getDate() - 7);
 
@@ -229,7 +230,7 @@ const generateWeeklySummary = async (req, res, next) => {
                 role: "user",
                 content: `I wrote some diary entries for this past week.
                 I want to understand my experiences and emotions better based on the diaries I wrote. 
-                Please summarize them into a coherent paragraph in this format: the top emotions I felt and the related experiences.
+                Please summarize them into a coherent paragraph and tell me what emotions I felt and why.
                 Do not include any dates in the summary, try to make it short and easy to understand, and use you as the pronoun instead of I.
                 Here are the entries:\n\n${contentToSummarize}`
             }],
@@ -245,7 +246,13 @@ const generateWeeklySummary = async (req, res, next) => {
         return next(error);
     }
 
-    res.status(200).json({ summary });
+    res.status(200).json({
+        userid: uid,
+        content: summary,
+        startdate: startingDate.toISOString(),
+        enddate: endingDate.toISOString(),
+        emotions: ['joy', 'sadness'] //still a dummy
+    });
 };
 
 module.exports = {
