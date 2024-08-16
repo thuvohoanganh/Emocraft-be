@@ -2,6 +2,7 @@ const OpenAI = require("openai")
 const HttpError = require('../models/http-error');
 const Diary = require('../models/diary');
 const User = require('../models/user');
+const Summary = require('../models/summary');
 const {
     checkCriteriaExplorePhase,
     checkCriteriaFeedbackPhase,
@@ -192,15 +193,41 @@ const generateWeeklySummary = async (req, res, next) => {
         return next(err);
     }
 
-    let endingDate = new Date();
-    let startingDate = new Date();
-    startingDate.setDate(startingDate.getDate() - 7);
+    let today = new Date();
+    let lastMonday;
+    let lastSunday;
+
+    // Calculate the last Monday and last Sunday
+    lastMonday = new Date(today);
+    lastSunday = new Date(today);
+    lastMonday.setDate(today.getDate() - today.getDay() - 6);
+    lastMonday.setHours(0, 0, 0, 0);
+    lastSunday.setDate(lastMonday.getDate() + 6);
+    lastSunday.setHours(23, 59, 59, 999);
+
+    let existingSummary;
+    try {
+        existingSummary = await Summary.findOne({
+            userid: uid,
+            startdate: { $gte: lastMonday },
+            enddate: { $lte: lastSunday }
+        });
+    } catch (err) {
+        err && console.log(err);
+        return next(new HttpError('Fetching summary failed, please try again later.', 500));
+    }
+
+    // If summary already exists for the week, return it
+    if (existingSummary) {
+        return res.status(200).json(existingSummary);
+    }
+
 
     let diaries;
     try {
         diaries = await Diary.find({
             userid: uid,
-            timestamp: { $gte: startingDate }
+            timestamp: { $gte: lastMonday, $lte: lastSunday }
         });
     } catch (err) {
         err && console.log(err);
@@ -246,13 +273,21 @@ const generateWeeklySummary = async (req, res, next) => {
         return next(error);
     }
 
-    res.status(200).json({
+    const newSummary = new Summary({
         userid: uid,
         content: summary,
-        startdate: startingDate.toISOString(),
-        enddate: endingDate.toISOString(),
-        emotions: ['joy', 'sadness'] //still a dummy
+        startdate: lastMonday.toISOString(),
+        enddate: lastSunday.toISOString(),
+        emotions: ['joy', 'sadness'] // still a dummy
     });
+
+    try {
+        await newSummary.save();
+    } catch (err) {
+        return next(new HttpError('Saving summary failed, please try again later.', 500));
+    }
+
+    res.status(200).json(newSummary);
 };
 
 module.exports = {
