@@ -5,10 +5,10 @@ const User = require('../models/user');
 const Summary = require('../models/summary');
 const {
     checkCriteriaExplorePhase,
-    checkCriteriaFeedbackPhase,
     generateResponseExplorePhase,
     generateExplanationPhase,
-    generateFeedbackPhase
+    generateFeedbackPhase,
+    generateResponse
 
 } = require('./phase-controller');
 const { PHASE_LABEL } = require('../constant')
@@ -290,10 +290,21 @@ const generateWeeklySummary = async (req, res, next) => {
     res.status(200).json(newSummary);
 };
 
+const generateRationaleSummary = async (diary, dialog, initRationale) => {
+    const instruction = `You are and psychologist. you are good at emotion awareness and you can understand where human emotion come from on user's diary. From the dialog, you assess user' emotions from 0 to 5. User gave you feedback about your analysis.
+    - From the dialog, determine user agree or disagree with you analysis.
+    - If user agree, return exactly your previous rationale.
+    - If user disagree and give feedback, generate another rationale based on their feedback and your previous rationale
+    This is previous your rationale: ${initRationale}
+    `
+    const updatedRationale =  await generateResponse(diary, dialog, instruction)
+
+    return updatedRationale
+}
 module.exports = {
     predictContextualInfor,
     chatbotConversation,
-    generateImage,
-    generateWeeklySummary
+    generateWeeklySummary,
+    generateRationaleSummary
 }
 

@@ -256,11 +256,11 @@ const checkCriteria = async (diary, dialog, instruction) => {
     return response
 }
 
-
 module.exports = {
     checkCriteriaExplorePhase,
     generateResponseExplorePhase,
     generateExplanationPhase,
-    generateFeedbackPhase
+    generateFeedbackPhase,
+    generateResponse
 }
 
