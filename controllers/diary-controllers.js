@@ -2,7 +2,7 @@ const Diary = require('../models/diary');
 const User = require('../models/user');
 const HttpError = require('../models/http-error');
 const { validationResult } = require('express-validator');
-const { generateRationaleSummary } = require("./chatgpt-controllers")
+const { generateRationaleSummary } = require('./phase-controllers');
 
 const createDiary = async (req, res, next) => {
     const errors = validationResult(req);
@@ -202,7 +202,6 @@ const deleteDiary = async (req, res, next) => {
     res.status(200).json({ message: 'Diary deleted', postId: existingDiary.id });
 }
 
-
 const saveAnalysisRationale = async (req, res, next) => {
     const errors = validationResult(req);
 
@@ -214,16 +213,22 @@ const saveAnalysisRationale = async (req, res, next) => {
     }
 
     const {userid, diaryid, diary, dialog, rationale } = req.body
-    let response = generateRationaleSummary(diary, dialog, rationale)
-    console.log("response", response)
-    if (!response) {
-        console.error("saveAnalysisRationale")
+    let response = ""
+
+    try {
+        response = await generateRationaleSummary(diary, dialog, rationale)
+        if (!response) {
+            throw("response empty")
+        }
+    } catch(err) {
+        console.error("saveAnalysisRationale:", err)
         const errorResponse = new HttpError(
             'chat fail',
             500
         );
         return next(errorResponse);
     }
+    
 
     try {
         const existingDiary = await Diary.findOne({ _id: diaryid, userid: userid });
@@ -245,6 +250,7 @@ const saveAnalysisRationale = async (req, res, next) => {
     });
 }
 
+
 const updateDiarySummary = async (userId, diaryid, summary) => {
     if (!userId || !diaryid || !summary) return
     let existingDiary;
@@ -260,6 +266,7 @@ const updateDiarySummary = async (userId, diaryid, summary) => {
         return
     }
 }
+
 module.exports = {
     createDiary,
     retrieveDiary,

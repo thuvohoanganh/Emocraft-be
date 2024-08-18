@@ -10,7 +10,7 @@ const {
     generateFeedbackPhase,
     generateResponse
 
-} = require('./phase-controller');
+} = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
 const { updateDiarySummary } = require('./diary-controllers');
@@ -51,11 +51,11 @@ const chatbotConversation = async (req, res, next) => {
 
     if (!!error) {
         console.error(error)
-        const error = new HttpError(
+        const _error = new HttpError(
             'chat fail',
             500
         );
-        return next(error);
+        return next(_error);
     }
 
     console.log("nextPhase", nextPhase)
@@ -77,7 +77,7 @@ const chatbotConversation = async (req, res, next) => {
     } else if (nextPhase === PHASE_LABEL.FEEDBACK) {
         const result = await generateFeedbackPhase(diary, dialog)
         error = result.error
-        response.phase = result.end ? PHASE_LABEL.END : result.phase
+        response.phase = result.phase
         response.content = result.content
     }
     if (!!error) {
@@ -91,6 +91,10 @@ const chatbotConversation = async (req, res, next) => {
 
     if (currentPhase === PHASE_LABEL.EXPLORE && nextPhase === PHASE_LABEL.EXPLAIN) {
         updateDiarySummary(userid, diaryid, summary)
+    }
+
+    if (response.content[0] === "") {
+        response.content = response.content.replace(/^\"+|\"+$/gm,'')
     }
 
     console.log("response", response)
@@ -191,8 +195,9 @@ const generateWeeklySummary = async (req, res, next) => {
                 role: "user",
                 content: `I wrote some diary entries for this past week.
                 I want to understand my experiences and emotions better based on the diaries I wrote. 
-                Please summarize them into a coherent paragraph and tell me what emotions I felt and why.
+                Please summarize them into a coherent paragraph and tell me what emotions I felt and why in the third view.
                 Do not include any dates in the summary, try to make it short and easy to understand, and use you as the pronoun instead of I.
+                Ex: When work is hectic and Susan has a lot to do, she feels happy and proud, as seen in her recent entry where she described the day as reminiscent of the "good old days." She enjoys the feeling of being overwhelmed and productive, which brings her satisfaction and a sense of accomplishment.
                 Here are the entries:\n\n${contentToSummarize}`
             }],
             model: "gpt-3.5-turbo"
@@ -225,20 +230,8 @@ const generateWeeklySummary = async (req, res, next) => {
     res.status(200).json(newSummary);
 };
 
-const generateRationaleSummary = async (diary, dialog, initRationale) => {
-    const instruction = `You are and psychologist. you are good at emotion awareness and you can understand where human emotion come from on user's diary. From the dialog, you assess user' emotions from 0 to 5. User gave you feedback about your analysis.
-    - From the dialog, determine user agree or disagree with you analysis.
-    - If user agree, return exactly your previous rationale.
-    - If user disagree and give feedback, generate another rationale based on their feedback and your previous rationale
-    This is previous your rationale: ${initRationale}
-    `
-    const updatedRationale =  await generateResponse(diary, dialog, instruction)
-
-    return updatedRationale
-}
 module.exports = {
     chatbotConversation,
     generateWeeklySummary,
-    generateRationaleSummary
 }
 
