@@ -216,6 +216,7 @@ const updateDiarySummary = async (userId, diaryid, summary) => {
         return
     }
 }
+
 module.exports = {
     createDiary,
     retrieveDiary,

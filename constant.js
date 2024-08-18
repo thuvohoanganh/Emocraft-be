@@ -1,11 +1,11 @@
-const EMOTION_LIST = "joy, sadness, disgust, surprise, fear, angry"
+const EMOTION_LIST = "joy, sadness, disgust, surprise, fear, anger"
 const EMOTION_LABEL = {
     JOY: "joy",
     SADNESS: "sadness",
     DISGUST: "disgust",
     SURPRISE:"surprise",
     FEAR: "fear",
-    ANGRY: "angry"
+    ANGER: "anger"
 }
 
 const PHASE_LABEL = {

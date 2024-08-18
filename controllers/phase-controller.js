@@ -118,7 +118,7 @@ const generateExplanationPhase = async (diary, dialog) => {
         "analysis": {
             ${[EMOTION_LABEL.JOY]}: number,
             ${[EMOTION_LABEL.DISGUST]}: number,
-            ${[EMOTION_LABEL.ANGRY]}: number,
+            ${[EMOTION_LABEL.ANGER]}: number,
             ${[EMOTION_LABEL.FEAR]}: number,
             ${[EMOTION_LABEL.SADNESS]}: number,
             ${[EMOTION_LABEL.SURPRISE]}: number,
