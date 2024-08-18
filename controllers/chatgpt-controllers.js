@@ -5,12 +5,12 @@ const User = require('../models/user');
 const Summary = require('../models/summary');
 const {
     checkCriteriaExplorePhase,
-    checkCriteriaFeedbackPhase,
     generateResponseExplorePhase,
     generateExplanationPhase,
-    generateFeedbackPhase
+    generateFeedbackPhase,
+    generateResponse
 
-} = require('./phase-controller');
+} = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
 const { updateDiarySummary } = require('./diary-controllers');
@@ -51,11 +51,11 @@ const chatbotConversation = async (req, res, next) => {
 
     if (!!error) {
         console.error(error)
-        const error = new HttpError(
+        const _error = new HttpError(
             'chat fail',
             500
         );
-        return next(error);
+        return next(_error);
     }
 
     console.log("nextPhase", nextPhase)
@@ -77,7 +77,7 @@ const chatbotConversation = async (req, res, next) => {
     } else if (nextPhase === PHASE_LABEL.FEEDBACK) {
         const result = await generateFeedbackPhase(diary, dialog)
         error = result.error
-        response.phase = result.end ? PHASE_LABEL.END : result.phase
+        response.phase = result.phase
         response.content = result.content
     }
     if (!!error) {
@@ -93,78 +93,16 @@ const chatbotConversation = async (req, res, next) => {
         updateDiarySummary(userid, diaryid, summary)
     }
 
+    if (response.content[0] === "") {
+        response.content = response.content.replace(/^\"+|\"+$/gm,'')
+    }
+
     console.log("response", response)
     console.log('------------------------------')
     res.status(200).json({
         data: response
     });
     return
-}
-
-
-const predictContextualInfor = async (req, res, next) => {
-    const diary = req.body.diary
-    const prompts = `You are an experienced diary study researcher. You are conducting a diary study right now, and when you receive my diary, you need to help the me to record some contextual information. These contextual information will be used as the cues for me to recall the event. Please predict the following contextual information based on the aforementioned information: 
-Location: predict three possible point of interest locations, you could use the point of interest location categories in Google Maps or some other location-based service apps. 
-People: select only one from these five categories, Alone, Families, Friends, Colleagues and Acquaintances, please keep the same spelling.
-Activity: give six descriptions of the six possible activities in this scenario (each description should be less than 50 characters). 
-Finally output these information in English in valid JSON format. And the value for the Location and Activity should be a list of three and six elements respectively. EXAMPLE: {"Location": [Library, Workspace, Meeting room], "People": Colleague, "Activity": [Working on laptop and taking notes, Studying or doing research, Planning or organizing tasks for the day, Preparing a meeting, Watching a academic seminar, Discussing the current project]}”
-My diary: ${diary}`
-
-    let response
-    try {
-        const chatCompletions = await openai.chat.completions.create({
-            messages: [{ role: "user", content: prompts }],
-            model: "gpt-3.5-turbo",
-        });
-
-        response = chatCompletions?.choices?.[0]?.message?.content
-        if (!prompts || !response) {
-            throw ("no response from ChatGPT")
-        }
-        response = JSON.parse(response)
-    } catch (err) {
-        const error = new HttpError(
-            'chat fail',
-            500
-        );
-        return next(error);
-    }
-
-
-    res.status(200).json({
-        data: response
-    });
-}
-
-const generateImage = async (req, res, next) => {
-    const diary = req.body.diary
-    let image_url = ""
-    try {
-        const response = await openai.images.generate({
-            model: "dall-e-3",
-            prompt: diary,
-            size: "1024x1024",
-            quality: "standard",
-            n: 1,
-        })
-
-        image_url = response.data[0].url
-        console.log(image_url)
-        if (!image_url) {
-            throw ("no response from ChatGPT")
-        }
-    } catch (err) {
-        console.log(err)
-        const error = new HttpError(
-            'chat fail',
-            500
-        );
-        return next(error);
-    }
-    res.status(200).json({
-        data: image_url
-    });
 }
 
 const checkUserExists = async (userId) => {
@@ -326,15 +264,16 @@ const generateWeeklySummary = async (req, res, next) => {
                 role: "user",
                 content: `I wrote some diary entries for this past week.
                 I want to understand my experiences and emotions better based on the diaries I wrote. 
-                Please summarize them into a coherent paragraph and tell me what emotions I felt and why.
+                Please summarize them into a coherent paragraph and tell me what emotions I felt and why in the third view.
                 Do not include any dates in the summary, try to make it short and easy to understand, and use you as the pronoun instead of I.
+                Ex: When work is hectic and Susan has a lot to do, she feels happy and proud, as seen in her recent entry where she described the day as reminiscent of the "good old days." She enjoys the feeling of being overwhelmed and productive, which brings her satisfaction and a sense of accomplishment.
                 Here are the entries:\n\n${contentToSummarize}`
             }],
             model: "gpt-3.5-turbo"
         });
         summary = response.choices[0].message.content.trim();
     } catch (err) {
-        err && console.error(err);
+        console.error(err);
         const error = new HttpError(
             'Summarizing diaries failed, please try again later.',
             500
@@ -355,7 +294,7 @@ const generateWeeklySummary = async (req, res, next) => {
     try {
         await newSummary.save();
     } catch (err) {
-        err & console.log(err);
+        console.error(err)
         return next(new HttpError('Saving summary failed, please try again later.', 500));
     }
 
@@ -363,9 +302,7 @@ const generateWeeklySummary = async (req, res, next) => {
 };
 
 module.exports = {
-    predictContextualInfor,
     chatbotConversation,
-    generateImage,
-    generateWeeklySummary
+    generateWeeklySummary,
 }
 

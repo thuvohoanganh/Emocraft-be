@@ -9,7 +9,7 @@ const openai = new OpenAI({
 });
 
 const GENERAL_SPEAKING_RULES = `
-- do not use double quotes at the start and the end of the response.
+- DO NOT include double quotes \" at the start and the end of the response.
 - Do not include any "tip:", "question:" etc and do not use hashtags. 
 `
 
@@ -103,14 +103,14 @@ rationale: ${summary.rationale}
         return response
     }
 
-    response.content = res
+    response.content = res.replace(/^\"+|\"+$/gm,'')
     return response
 }
 
 const generateExplanationPhase = async (diary, dialog) => {
     const instruction = `You are a psychologist. you are good at emotion awareness and you can understand where human emotion come from based on user's diary, tell the user how you feel about their emotions and reason why.
     Return response with JSON format with the following properties:
-    (1) content: you should show empathy and tell user how you feel about their emotion and reason why.
+    (1) content: you should show empathy and tell user how you feel about their emotion and reason why. Length should be less then 100 words.
     (2) analysis: assess user's emotions based on 6 basic emotions (${EMOTION_LIST}) from 0 to 5
     (3) rationale: Describe to user your rationale on how the "analysis" properties were derived.
     {
@@ -138,7 +138,7 @@ const generateExplanationPhase = async (diary, dialog) => {
     try {
         const res = JSON.parse(_res)
         if (res.content && res.analysis) {
-            response.content = res.content
+            response.content = res.content.replace(/^\"+|\"+$/gm,'')
             response.analysis = res.analysis
             response.rationale = res.rationale
         } else {
@@ -179,14 +179,14 @@ const generateFeedbackPhase = async (diary, dialog) => {
     try {
         const res = JSON.parse(_res)
         if (res.content) {
-            response.content = res.content
+            response.content = res.content.replace(/^\"+|\"+$/gm,'')
             response.end = res.end
         } else {
-            throw("error: wrong response format function generateResponse")
+            response.error = "Empty response"
         }
     } catch {
-        if (!_res) {
-            response.error = "ChatGPT failed"
+        if (typeof _res === "string") {
+            response.content = _res.replace(/^\"+|\"+$/gm,'')
         } else {
             response.error = "ChatGPT return wrong format"
         }
@@ -200,6 +200,7 @@ const generateResponse = async (diary, dialog, instruction) => {
         ...e,
         content: JSON.stringify(e.content)
     }))
+    console.log("instruction", instruction)
     const messages = [
         {
             role: "system",
@@ -256,11 +257,27 @@ const checkCriteria = async (diary, dialog, instruction) => {
     return response
 }
 
+const generateRationaleSummary = async (diary, dialog, initRationale) => {
+    const instruction = `You are and psychologist. you are good at emotion awareness and you can understand where human emotion come from on user's diary. From the dialog, you assess user' emotions from 0 to 5. User gave you feedback about your analysis.
+    - From the dialog, determine user agree or disagree with you analysis.
+    - If user agree, return exactly your previous rationale. DO NOT include double quotes \" at the start and the end of the response.
+    - If user disagree and give feedback, generate another rationale based on their feedback and your previous rationale.
+    ${GENERAL_SPEAKING_RULES}
+    This is previous your rationale: ${initRationale}
+    Response example: From your diary, there's a sense of tiredness which can be associated with a low level of sadness. There's also a hint of joy from spending time with a friend and visting the cathedral. There's no indication of disgust, anger, fear, or surprise in your writing.
+    `
+    let updatedRationale = await generateResponse(diary, dialog, instruction)
+    updatedRationale = updatedRationale.replace(/^\"+|\"+$/gm,'')
+
+    return updatedRationale
+}
 
 module.exports = {
     checkCriteriaExplorePhase,
     generateResponseExplorePhase,
     generateExplanationPhase,
-    generateFeedbackPhase
+    generateFeedbackPhase,
+    generateResponse,
+    generateRationaleSummary,
 }
 

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const chatgptController = require('../controllers/chatgpt-controllers');
-const { predictContextualInfor, chatbotConversation, generateImage, generateWeeklySummary } = chatgptController;
+const { chatbotConversation, generateWeeklySummary } = chatgptController;
 const { check } = require('express-validator');
 
 router.post('/emotions-recognition', [
@@ -12,10 +12,6 @@ router.post('/emotions-recognition', [
         .not()
         .isEmpty(),
 ], chatbotConversation);
-
-router.post('/context-prediction', predictContextualInfor);
-
-router.post('/image-generation', generateImage);
 
 router.get('/weekly-summary/:uid', generateWeeklySummary)
 
