@@ -184,10 +184,24 @@ const generateWeeklySummary = async (req, res, next) => {
     }
 
     if (!diaries || diaries.length === 0) {
-        const error = new HttpError(
-            'No diaries found for the last week.', 404
-        );
-        return next(error);
+        const newSummary = new Summary({
+            userid: uid,
+            content: "You didn't write anything last week",
+            startdate: lastMonday.toISOString(),
+            enddate: lastSunday.toISOString(),
+            dailyEmotions: {},
+            emotionPercentages: { joy: 0, sadness: 0, disgust: 0, anger: 0, fear: 0, surprise: 0 },
+            weeklyEmotions: []
+        });
+    
+        try {
+            await newSummary.save();
+        } catch (err) {
+            console.error(err)
+            return next(new HttpError('Saving summary failed, please try again later.', 500));
+        }
+    
+        return res.status(200).json(newSummary);
     }
 
     const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
