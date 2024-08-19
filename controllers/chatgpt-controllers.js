@@ -76,7 +76,7 @@ const chatbotConversation = async (req, res, next) => {
     } else if (nextPhase === PHASE_LABEL.FEEDBACK) {
         const result = await generateFeedbackPhase(diary, dialog)
         error = result.error
-        response.phase = result.end ? PHASE_LABEL.END : result.phase
+        response.phase = result.phase
         response.content = result.content
     }
     if (!!error) {
