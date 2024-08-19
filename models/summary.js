@@ -16,10 +16,20 @@ const SummarySchema = new mongoose.Schema({
     enddate: { 
         type: Date, 
         required: true },
-    emotions: { 
-        type: [String], 
+    dailyEmotions: { 
+        type: Map,
+        of: [String],
         required: true 
     },
+    emotionPercentages: {
+        type: Map,
+        of: String,
+        required: true
+    },
+    weeklyEmotions: {
+        type: [String],
+        required: true
+    }
 })
 
 module.exports = mongoose.model('Summary', SummarySchema);

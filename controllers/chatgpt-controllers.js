@@ -7,9 +7,8 @@ const {
     checkCriteriaExplorePhase,
     generateResponseExplorePhase,
     generateExplanationPhase,
-    generateFeedbackPhase,
-
-} = require('./phase-controller');
+    generateFeedbackPhase
+} = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
 const { updateDiarySummary } = require('./diary-controllers');
@@ -50,11 +49,11 @@ const chatbotConversation = async (req, res, next) => {
 
     if (!!error) {
         console.error(error)
-        const error = new HttpError(
+        const _error = new HttpError(
             'chat fail',
             500
         );
-        return next(error);
+        return next(_error);
     }
 
     console.log("nextPhase", nextPhase)
@@ -92,6 +91,10 @@ const chatbotConversation = async (req, res, next) => {
         updateDiarySummary(userid, diaryid, summary)
     }
 
+    if (response.content[0] === "") {
+        response.content = response.content.replace(/^\"+|\"+$/gm,'')
+    }
+
     console.log("response", response)
     console.log('------------------------------')
     res.status(200).json({
@@ -127,13 +130,18 @@ const generateWeeklySummary = async (req, res, next) => {
     }
 
     let today = new Date();
-    let lastMonday;
-    let lastSunday;
+    let lastMonday, lastSunday;
 
     // Calculate the last Monday and last Sunday
     lastMonday = new Date(today);
     lastSunday = new Date(today);
-    lastMonday.setDate(today.getDate() - today.getDay() - 6);
+    
+    if (today.getDay() === 0) {
+        lastMonday.setDate(today.getDate() - 7 - 6);
+    } else {
+        lastMonday.setDate(today.getDate() - today.getDay() - 6);
+    }
+
     lastMonday.setHours(0, 0, 0, 0);
     lastSunday.setDate(lastMonday.getDate() + 6);
     lastSunday.setHours(23, 59, 59, 999);
@@ -162,6 +170,8 @@ const generateWeeklySummary = async (req, res, next) => {
             userid: uid,
             timestamp: { $gte: lastMonday, $lte: lastSunday }
         });
+
+        diaries.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     } catch (err) {
         err && console.log(err);
         const error = new HttpError(
@@ -178,6 +188,68 @@ const generateWeeklySummary = async (req, res, next) => {
         return next(error);
     }
 
+    const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    // Processing the emotions
+    const dailyTopEmotions = {};
+    const totalEmotions = { joy: 0, sadness: 0, disgust: 0, anger: 0, fear: 0, surprise: 0 };
+
+    diaries.forEach(diary => {
+        const { emotions, timestamp } = diary;
+        const parsedEmotions = JSON.parse(emotions);
+        const day = dayMap[new Date(timestamp).getDay()];
+
+        if (!dailyTopEmotions[day]) {
+            dailyTopEmotions[day] = { ...parsedEmotions };
+        } else {
+            // Aggregate emotions for the same day
+            for (const emotion in parsedEmotions) {
+                dailyTopEmotions[day][emotion] += parsedEmotions[emotion];
+            }
+        }
+
+        // Accumulate total emotions for the week
+        for (const emotion in parsedEmotions) {
+            if (!isNaN(totalEmotions[emotion])) {
+                totalEmotions[emotion] += parsedEmotions[emotion];
+            }
+        }
+    });
+
+    console.log('totalEmotions:', totalEmotions);
+
+    // Determine top 2 emotions for each day
+    for (const day in dailyTopEmotions) {
+        const topTwo = Object.entries(dailyTopEmotions[day])
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 2)
+            .map(([emotion]) => emotion);
+
+        dailyTopEmotions[day] = topTwo;
+    }
+
+    // Determine top 2 emotions for the entire week
+    const topTwoWeekly = Object.entries(totalEmotions)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 2)
+    .map(([emotion]) => emotion);
+
+    // Calculate percentage for each emotion
+    const totalIntensity = Object.values(totalEmotions).reduce((sum, val) => sum + val, 0);
+    const emotionPercentages = {joy: 0, sadness: 0, disgust: 0, anger: 0, fear: 0, surprise: 0 };
+    
+    if (totalIntensity > 0) {
+        for (const emotion in totalEmotions) {
+            const value = totalEmotions[emotion];
+            if (!isNaN(value) && value >= 0) {
+                emotionPercentages[emotion] = ((value / totalIntensity) * 100).toFixed(1);
+            }
+        }
+    }
+
+    console.log('emotionPercentages:', emotionPercentages);
+
+    // Summarize the diary entries
     const contentToSummarize = diaries.map(diary => {
         const date = new Date(diary.timestamp).toLocaleString(); // Format timestamp to a readable format
         return `On ${date}: ${diary.content}`;
@@ -190,15 +262,16 @@ const generateWeeklySummary = async (req, res, next) => {
                 role: "user",
                 content: `I wrote some diary entries for this past week.
                 I want to understand my experiences and emotions better based on the diaries I wrote. 
-                Please summarize them into a coherent paragraph and tell me what emotions I felt and why.
+                Please summarize them into a coherent paragraph and tell me what emotions I felt and why in the third view.
                 Do not include any dates in the summary, try to make it short and easy to understand, and use you as the pronoun instead of I.
+                Ex: When work is hectic and Susan has a lot to do, she feels happy and proud, as seen in her recent entry where she described the day as reminiscent of the "good old days." She enjoys the feeling of being overwhelmed and productive, which brings her satisfaction and a sense of accomplishment.
                 Here are the entries:\n\n${contentToSummarize}`
             }],
             model: "gpt-3.5-turbo"
         });
         summary = response.choices[0].message.content.trim();
     } catch (err) {
-        err && console.error(err);
+        console.error(err);
         const error = new HttpError(
             'Summarizing diaries failed, please try again later.',
             500
@@ -211,12 +284,15 @@ const generateWeeklySummary = async (req, res, next) => {
         content: summary,
         startdate: lastMonday.toISOString(),
         enddate: lastSunday.toISOString(),
-        emotions: ['joy', 'sadness'] // still a dummy
+        dailyEmotions: dailyTopEmotions,
+        emotionPercentages: emotionPercentages,
+        weeklyEmotions: topTwoWeekly
     });
 
     try {
         await newSummary.save();
     } catch (err) {
+        console.error(err)
         return next(new HttpError('Saving summary failed, please try again later.', 500));
     }
 
@@ -225,6 +301,6 @@ const generateWeeklySummary = async (req, res, next) => {
 
 module.exports = {
     chatbotConversation,
-    generateWeeklySummary
+    generateWeeklySummary,
 }
 

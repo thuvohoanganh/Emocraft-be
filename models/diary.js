@@ -21,6 +21,9 @@ const DiarySchema = new mongoose.Schema({
     dialog: {
         type: String //stringify the JSON dialog
     },
+    rationale: {
+        type: String
+    },
     createdAt: {
         type: Date,
         default: Date.now

@@ -2,6 +2,7 @@ const Diary = require('../models/diary');
 const User = require('../models/user');
 const HttpError = require('../models/http-error');
 const { validationResult } = require('express-validator');
+const { generateRationaleSummary } = require('./phase-controllers');
 
 const createDiary = async (req, res, next) => {
     const errors = validationResult(req);
@@ -201,6 +202,55 @@ const deleteDiary = async (req, res, next) => {
     res.status(200).json({ message: 'Diary deleted', postId: existingDiary.id });
 }
 
+const saveAnalysisRationale = async (req, res, next) => {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+        console.error("saveAnalysisRationale:", errors)
+        return next(
+            new HttpError(JSON.stringify(errors), 422)
+        );
+    }
+
+    const {userid, diaryid, diary, dialog, rationale } = req.body
+    let response = ""
+
+    try {
+        response = await generateRationaleSummary(diary, dialog, rationale)
+        if (!response) {
+            throw("response empty")
+        }
+    } catch(err) {
+        console.error("saveAnalysisRationale:", err)
+        const errorResponse = new HttpError(
+            'chat fail',
+            500
+        );
+        return next(errorResponse);
+    }
+    
+
+    try {
+        const existingDiary = await Diary.findOne({ _id: diaryid, userid: userid });
+        if(existingDiary) {
+            existingDiary.rationale = response
+            await existingDiary.save();
+        }
+    } catch (err) {
+        console.error("saveAnalysisRationale")
+        const errorResponse = new HttpError(
+            'chat fail',
+            500
+        );
+        return next(errorResponse);
+    }
+
+    res.status(200).json({
+        data: response
+    });
+}
+
+
 const updateDiarySummary = async (userId, diaryid, summary) => {
     if (!userId || !diaryid || !summary) return
     let existingDiary;
@@ -216,11 +266,13 @@ const updateDiarySummary = async (userId, diaryid, summary) => {
         return
     }
 }
+
 module.exports = {
     createDiary,
     retrieveDiary,
     getDiaries,
     updateDiary,
     deleteDiary,
-    updateDiarySummary
+    updateDiarySummary,
+    saveAnalysisRationale
 };
