@@ -212,8 +212,19 @@ const generateWeeklySummary = async (req, res, next) => {
 
     diaries.forEach(diary => {
         const { emotions, timestamp } = diary;
-        const parsedEmotions = JSON.parse(emotions);
         const day = dayMap[new Date(timestamp).getDay()];
+
+        let parsedEmotions;
+        try {
+            if (emotions) {
+                parsedEmotions = JSON.parse(emotions);
+            } else {
+                parsedEmotions = {}; 
+            }
+        } catch (err) {
+            console.error(`Failed to parse emotions for diary entry on ${timestamp}:`, err);
+            parsedEmotions = {};
+        }
 
         if (!dailyTopEmotions[day]) {
             dailyTopEmotions[day] = { ...parsedEmotions };
@@ -237,6 +248,7 @@ const generateWeeklySummary = async (req, res, next) => {
     // Determine top 2 emotions for each day
     for (const day in dailyTopEmotions) {
         const topTwo = Object.entries(dailyTopEmotions[day])
+            .filter(([, intensity]) => intensity > 0)
             .sort(([, a], [, b]) => b - a)
             .slice(0, 2)
             .map(([emotion]) => emotion);
@@ -246,9 +258,10 @@ const generateWeeklySummary = async (req, res, next) => {
 
     // Determine top 2 emotions for the entire week
     const topTwoWeekly = Object.entries(totalEmotions)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 2)
-    .map(([emotion]) => emotion);
+        .filter(([, intensity]) => intensity > 0)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 2)
+        .map(([emotion]) => emotion);
 
     // Calculate percentage for each emotion
     const totalIntensity = Object.values(totalEmotions).reduce((sum, val) => sum + val, 0);
@@ -279,7 +292,7 @@ const generateWeeklySummary = async (req, res, next) => {
                 content: `I wrote some diary entries for this past week.
                 I want to understand my experiences and emotions better based on the diaries I wrote. 
                 Please summarize them into a coherent paragraph and tell me what emotions I felt and why in the third view.
-                Do not include any dates in the summary, try to make it short and easy to understand, and use you as the pronoun instead of I.
+                Do not include any dates and time in the summary, try to make it short and easy to understand, and use you as the pronoun instead of I.
                 Ex: When work is hectic and Susan has a lot to do, she feels happy and proud, as seen in her recent entry where she described the day as reminiscent of the "good old days." She enjoys the feeling of being overwhelmed and productive, which brings her satisfaction and a sense of accomplishment.
                 Here are the entries:\n\n${contentToSummarize}`
             }],
