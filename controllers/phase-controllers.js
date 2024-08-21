@@ -29,7 +29,7 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
 
     const instruction = `- You are a helpful assistant that analyzes the content of the dialog history.
 - Given a dialogue history and user's diary, determine whether it is reasonable to move on to the next conversation phase or not.
-- Move to the next phase only when the user shared a key episode and you can figure out theri emotions about it.
+- Move to the next phase only when the user shared a key episode and you can figure out their emotions about it.
 - Move to the next phase if you asked user more than 3 questions.
 - Use JSON format with the following properties:
   (1) key_episode: a key episode that the user described.
@@ -79,7 +79,7 @@ const generateResponseExplorePhase = async (diary, dialog, summary) => {
         content: "",
     }
 
-    const instruction = `- Given user's dairy and a dialogue summary of what is missing in the memory event, ask them to elaborate more about their emotions or missing contextual information that contribute to user's emotion. 
+    const instruction = `- Given user's dairy and a dialogue summary of what is missing in the memory event, ask them missing contextual information that contribute to user's emotion. 
     - Follow up what user mentioned in the diary.
     ${!summary.empathized? (
     `- Empathize the user's emotion by restating how they felt.
