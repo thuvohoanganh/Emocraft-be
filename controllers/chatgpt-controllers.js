@@ -43,7 +43,8 @@ const chatbotConversation = async (req, res, next) => {
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
-    } else if (currentPhase === PHASE_LABEL.EXPLAIN) {
+    // } else if (currentPhase === PHASE_LABEL.EXPLAIN) {
+    } else if (currentPhase === PHASE_LABEL.DETECT) {
         nextPhase = PHASE_LABEL.FEEDBACK
     } 
 
@@ -65,7 +66,8 @@ const chatbotConversation = async (req, res, next) => {
         error = result.error
         response.phase = result.phase
         response.content = result.content
-    } else if (nextPhase === PHASE_LABEL.EXPLAIN) {
+    // } else if (nextPhase === PHASE_LABEL.EXPLAIN) {
+    } else if (nextPhase === PHASE_LABEL.DETECT) {
         const result = await generateExplanationPhase(diary, dialog)
         error = result.error
         response.phase = result.phase
@@ -87,7 +89,8 @@ const chatbotConversation = async (req, res, next) => {
         return next(errorResponse);
     }
 
-    if (currentPhase === PHASE_LABEL.EXPLORE && nextPhase === PHASE_LABEL.EXPLAIN) {
+    // if (currentPhase === PHASE_LABEL.EXPLORE && nextPhase === PHASE_LABEL.EXPLAIN) {
+    if (currentPhase === PHASE_LABEL.EXPLORE && nextPhase === PHASE_LABEL.DETECT) {
         updateDiarySummary(userid, diaryid, summary)
     }
 

@@ -55,7 +55,8 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     try {
         const res = JSON.parse(_res)
         if (res.summary.move_to_next) {
-            response.next_phase = PHASE_LABEL.EXPLAIN
+            // response.next_phase = PHASE_LABEL.EXPLAIN
+            response.next_phase = PHASE_LABEL.DETECT
         }
         response.summary = res.summary
     } catch {
@@ -108,7 +109,7 @@ rationale: ${summary.rationale}
 }
 
 const generateExplanationPhase = async (diary, dialog) => {
-    const instruction = `You are a psychologist. you are good at emotion awareness and you can understand where human emotion come from based on user's diary, tell the user how you feel about their emotions and reason why.
+    const instruction_6 = `You are a psychologist. you are good at emotion awareness and you can understand where human emotion come from based on user's diary, tell the user how you feel about their emotions and reason why.
     Return response with JSON format with the following properties:
     (1) content: you should show empathy and tell user how you feel about their emotion and reason why. Length should be less then 100 words.
     (2) analysis: assess user's emotions based on 6 basic emotions (${EMOTION_LIST}) from 0 to 5
@@ -126,14 +127,123 @@ const generateExplanationPhase = async (diary, dialog) => {
         "rationale": string
     } 
     `
+    const instruction_8 = `
+        You will analyze diary entries to evaluate their emotional content, focusing on identifying eight primary emotions: ${EMOTION_LIST}, as defined below:
+
+        - **Sadness**: A feeling of unhappiness, sorrow, or disappointment, often associated with a sense of loss, grief, or helplessness.
+        - **Joy**: A feeling of great pleasure, happiness, or delight, often experienced as a result of positive or rewarding events, fostering optimism and satisfaction.
+        - **Anger**: An intense emotional response to a perceived injustice or frustration, often accompanied by feelings of irritation, rage, or hostility.
+        - **Fear**: An emotional response to a perceived threat, danger, or harm, often leading to feelings of anxiety, unease, or panic.
+        - **Disgust**: A strong feeling of aversion or revulsion towards something considered unpleasant, offensive, or repugnant.
+        - **Surprise**: A sudden emotional reaction to something unexpected, which can be positive or negative, and is usually brief, involving a sense of astonishment or wonder.
+        - **Trust**: A sense of reliability and safety, characterized by feelings of confidence, comfort, and acceptance in someone or something, promoting a bond or connection.
+        - **Anticipation**: A feeling of excitement, eagerness, or apprehension about a future event, often accompanied by expectations of what might happen.
+
+        Return the response **strictly in JSON format**, structured as follows:
+
+        1. **Content**: Empathize with the user’s emotions along with a brief explanation of why you resonate with their experience. Keep the response under 100 words.
+
+        2. **Ranking**: 
+        - Rank the three most prominent emotions in the diary entry according to their intensity, starting with the strongest and listing them in descending order.
+        - Focus solely on the eight mentioned emotions: ${EMOTION_LIST}.
+        - If fewer than three of the eight emotions are detected, list only the detected emotions. If none of the eight emotions are detected, state 'None'.
+
+        3. **Rationale**: 
+        Describe to the user your rationale for how the “Ranking” properties were derived.
+
+        The response **must** be a valid JSON object in the following format:
+
+        {
+            "content": "string",
+            "analysis": ["emotion1", "emotion2", "emotion3"],
+            "rationale": "string"
+        }
+
+        Example:
+
+        {
+            "content": "It seems like you experienced a lot of joy and trust during your sports competition, especially when you scored two goals.",
+            "analysis": ["joy", "trust", "anticipation"],
+            "rationale": "The ranking is based on your expression of positive feelings and excitement about the competition and your performance."
+        }
+    `
+
+    const instruction_32 = `
+    You will analyze diary entries to evaluate their emotional content, focusing on identifying 32 distinct emotions: ${EMOTION_LIST}, as defined below:
+
+    1. 8 Primary Emotions
+    The 8 primary emotions form the foundational emotional experience. Each is associated with a core feeling:
+
+    - Sadness: A feeling of unhappiness, sorrow, or disappointment, often related to a sense of loss, grief, or helplessness.
+    - Joy: A feeling of great pleasure, happiness, or delight, typically stemming from positive events, evoking optimism and satisfaction.
+    - Anger: An intense emotional response to perceived injustice or frustration, often involving irritation, rage, or hostility.
+    - Fear: An emotional reaction to perceived danger or harm, frequently accompanied by anxiety, unease, or panic.
+    - Disgust: A strong aversion or revulsion towards something unpleasant, offensive, or repugnant.
+    - Surprise: A brief emotional response to unexpected events, which can be either positive or negative, typically involving astonishment or wonder.
+    - Trust: A feeling of confidence and safety, characterized by reliability and comfort in someone or something, fostering a sense of connection.
+    - Anticipation: A feeling of excitement, eagerness, or apprehension about a future event, often accompanied by expectations of possible outcomes.
+
+    2. 16 Emotion Intensity Variations
+    Each primary emotion has variations in intensity, ranging from mild to strong:
+
+    - Joy: Serenity (mild), Ecstasy (intense)
+    - Trust: Acceptance (mild), Admiration (intense)
+    - Fear: Apprehension (mild), Terror (intense)
+    - Surprise: Distraction (mild), Amazement (intense)
+    - Sadness: Pensiveness (mild), Grief (intense)
+    - Disgust: Boredom (mild), Loathing (intense)
+    - Anger: Annoyance (mild), Rage (intense)
+    - Anticipation: Interest (mild), Vigilance (intense)
+
+    3. Blended Emotions (Dyads)
+    Blended emotions are combinations of two primary emotions, creating more complex emotional experiences:
+
+    - Love: Joy + Trust
+    - Submission: Trust + Fear
+    - Awe: Fear + Surprise
+    - Disapproval: Surprise + Sadness
+    - Remorse: Sadness + Disgust
+    - Contempt: Disgust + Anger
+    - Aggressiveness: Anger + Anticipation
+    - Optimism: Anticipation + Joy
+
+
+    Return the response in JSON format, structured as follows:
+
+    ### 1. Content
+    Empathize with the user’s emotions along with a brief explanation of why you resonate with their experience. Keep the response under 100 words.
+
+    ### 2. Ranking
+    - Rank the emotions in the diary entry according to their intensity, starting with the strongest and listing them in descending order.
+    - Focus solely on the 32 mentioned emotions: ${EMOTION_LIST}. Do not include other emotions in the ranking.
+    - Consider the diary entry as a whole rather than focusing on individual sentences or paragraphs, ranking based on the prominence of emotions throughout the entry.
+    - Maintain an objective stance by focusing only on expressed emotions and not inferring beyond the content of the diary entry.
+    - Format the rankings as follows: [first intense emotion, second most intense, third most intense, ....]
+    - If none of the 32 emotions are detected, state 'None'.
+
+    ### 3. Rationale:
+    Describe to the user your rationale for how the “Ranking” properties were derived. 
+
+    Sample response format:
+    {
+        “content”: string,
+        “analysis”: [string],
+        “rationale”: string,
+    }
+    `
+
+    const removed = "- Rank the three most prominent emotions in the diary entry according to their intensity, starting with the strongest and listing them in descending order."
+
     const response = {
         error: "",
-        phase: PHASE_LABEL.EXPLAIN,
+        // phase: PHASE_LABEL.EXPLAIN,
+        phase: PHASE_LABEL.DETECT,
         content: "",
         analysis: null,
         rationale: ""
     }
-    const _res =  await generateResponse(diary, dialog, instruction)
+    const _res =  await generateResponse(diary, dialog, instruction_32)
+
 
     try {
         const res = JSON.parse(_res)
@@ -151,6 +261,8 @@ const generateExplanationPhase = async (diary, dialog) => {
             response.error = "ChatGPT return wrong format"
         }
     }
+
+    console.log("Response: ", response);
     return response
 }
 
