@@ -29,15 +29,13 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
 
     const instruction = `- You are a helpful assistant that analyzes the content of the dialog history.
 - Given a dialogue history and user's diary, determine whether it is reasonable to move on to the next conversation phase or not.
-- Move to the next phase only when the user shared a key episode and you can figure out their emotions about it.
-- Move to the next phase if you asked user more than 3 questions.
 - Use JSON format with the following properties:
   (1) key_episode: a key episode that the user described.
-  (2) user_emotion: the emotion of the user caused by the key episode. Make sure the emotion is connected to (1)
+  (2) user_emotion: the emotion of the user mentioned in diary or dialog. Make sure the emotion is connected to (1). Only extract text written by user, do not predict.
   (3) location: where did event happen (e.g. home, office). Only extract text written by user, do not predict.
   (4) people: who were involved in the event and contribute to user's emotion (e.g. alone, friend). Only extract text written by user, do not predict.
-  (5) move_to_next: When (1) and (2) and (3) and (4) are not null or user don't want to answer your questions, you can go to the next step.
-  (6) rationale: Describe your rationale on how the above properties were derived.
+  (5) move_to_next: When key_episode, user_emotion, location, people are not null or user don't want to answer your questions or you asked more than 3 questions, you go the next step immediately. Make sure that key_episode, user_emotion, location, people are not null.
+  (6) rationale: Describe your rationale on how move_to_next were derived.
   (7) empathized: you have showed your empathy to user or not. yes is true, no is false
     {
         "summary": {
@@ -79,13 +77,17 @@ const generateResponseExplorePhase = async (diary, dialog, summary) => {
         content: "",
     }
 
-    const instruction = `- Given user's dairy and a dialogue summary of what is missing in the memory event, ask them missing contextual information that contribute to user's emotion. 
+    const instruction = `- Given user's dairy and a dialogue summary of what is missing in the memory event.
     - Follow up what user mentioned in the diary.
     ${!summary.empathized? (
     `- Empathize the user's emotion by restating how they felt.
     - Separate the empathy and the questions with line break.`
     ) : ""}
-    - Choose only 1 missing information (null) and ask 1 question.
+    ${!summary.user_emotion? (
+    "- Ask user's emotion relating to key_episode and try to guess their emotion."
+    ) : (
+    "- Ask them missing contextual information that contribute to user's emotion. Choose the first missing information (null) and ask 1 question about that."
+    )}
     - Response should be less than 50 words.
     ${GENERAL_SPEAKING_RULES}
 
