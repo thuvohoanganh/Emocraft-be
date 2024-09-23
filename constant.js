@@ -1,68 +1,29 @@
-// USING EKMAN'S 6 BASIC EMOTIONS
-
-// const EMOTION_LIST = "joy, sadness, disgust, surprise, fear, anger"
-// const EMOTION_LABEL = {
-//     JOY: "joy",
-//     SADNESS: "sadness",
-//     DISGUST: "disgust",
-//     SURPRISE:"surprise",
-//     FEAR: "fear",
-//     ANGER: "anger"
-// }
-
-// const PHASE_LABEL = {
-//     EXPLORE: "explore",
-//     EXPLAIN: "explain",
-//     FEEDBACK: "feedback",
-//     END: "end"
-// }
-
-// module.exports = {
-//     EMOTION_LIST,
-//     EMOTION_LABEL,
-//     PHASE_LABEL
-// }
-
-// USING PLUTCHIK'S 8 BASIC EMOTIONS
-
-// const EMOTION_LIST = "joy, trust, fear, surprise, sadness, disgust, anger, anticipation"
-// const EMOTION_LABEL = {
-//     JOY: "joy",
-//     TRUST: "trust",
-//     FEAR: "fear",
-//     SURPRISE:"surprise",
-//     SADNESS: "sadness",
-//     DISGUST: "disgust",
-//     ANGER: "anger",
-//     ANTICIPATION: "anticipation"
-// }
-
-const EMOTION_LIST = "serenity, joy, ecstasy, acceptance, trust, admiration, apprehension, fear, terror, distraction, surprise, amazement, pensiveness, sadness, grief, boredom, disgust, loathing, annoyance, anger, rage, interest, anticipation, vigilance, love, submission, awe, disapproval, remorse, contempt, aggressiveness, optimism";
+const EMOTION_LIST = "calm, joy, delighted, acceptance, trust, admiration, anxious, fear, terror, distraction, surprise, amazement, unhappy, sadness, heartbroken, tired, disgust, horrified, annoyance, anger, overwhelmed, interest, anticipation, focused, love, submission, awe, disapproval, remorse, contempt, aggressiveness, optimism";
 const EMOTION_LABEL = {
-    SERENITY: "serenity",
+    SERENITY: "calm",
     JOY: "joy",
-    ECSTASY: "ecstasy",
+    ECSTASY: "delighted",
     ACCEPTANCE: "acceptance",
     TRUST: "trust",
     ADMIRATION: "admiration",
-    APPREHENSION: "apprehension",
+    APPREHENSION: "anxious",
     FEAR: "fear",
     TERROR: "terror",
     DISTRACTION: "distraction",
     SURPRISE: "surprise",
     AMAZEMENT: "amazement",
-    PENSIVENESS: "pensiveness",
+    PENSIVENESS: "unhappy",
     SADNESS: "sadness",
-    GRIEF: "grief",
-    BOREDOM: "boredom",
+    GRIEF: "heartbroken",
+    BOREDOM: "tired",
     DISGUST: "disgust",
-    LOATHING: "loathing",
+    LOATHING: "horrified",
     ANNOYANCE: "annoyance",
     ANGER: "anger",
-    RAGE: "rage",
+    RAGE: "overwhelmed",
     INTEREST: "interest",
     ANTICIPATION: "anticipation",
-    VIGILANCE: "vigilance",
+    VIGILANCE: "focused",
     LOVE: "love",
     SUBMISSION: "submission",
     AWE: "awe",
@@ -81,8 +42,88 @@ const PHASE_LABEL = {
     END: "end"
 }
 
+const instruction_32_emotion = `
+You will analyze diary entries to evaluate their emotional content, focusing on identifying 32 distinct emotions: ${EMOTION_LIST}, as defined below:
+
+8 Primary Emotions
+- Sadness: A feeling of unhappiness, sorrow, or disappointment, often related to a sense of loss, heartbroken, or helplessness.
+- Joy: A feeling of great pleasure, happiness, or delight, typically stemming from positive events, evoking optimism and satisfaction.
+- Anger: An intense emotional response to perceived injustice or frustration, often involving irritation, overwhelmed, or hostility.
+- Fear: An emotional reaction to perceived danger or harm, frequently accompanied by anxiety, unease, or panic.
+- Disgust: A strong aversion or revulsion towards something unpleasant, offensive, or repugnant.
+- Surprise: A brief emotional response to unexpected events, which can be either positive or negative, typically involving astonishment or wonder.
+- Trust: A feeling of confidence and safety, characterized by reliability and comfort in someone or something, fostering a sense of connection.
+- Anticipation: A feeling of excitement, eagerness, or anxious about a future event, often accompanied by expectations of possible outcomes.
+
+16 Emotion Intensity Variations
+calm, delighted, acceptance, admiration, apprehension, terror, distraction, amazement, unhappy, heartbroken, tired, horrified, annoyance, overwhelmed, interest, focused
+
+Blended Emotions
+- Love: Joy + Trust
+- Submission: Trust + Fear
+- Awe: Fear + Surprise
+- Disapproval: Surprise + Sadness
+- Remorse: Sadness + Disgust
+- Contempt: Disgust + Anger
+- Aggressiveness: Anger + Anticipation
+- Optimism: Anticipation + Joy
+
+
+Return the response in JSON format, structured as follows:
+
+### 1. Content
+Describe to the user your rationale for how the Analysis properties were derived. 
+
+### 2. Analysis
+- Rank the emotions in the diary entry according to their intensity, starting with the strongest and listing them in descending order.
+- Focus solely on the 32 emotions of Plutchik's model: ${EMOTION_LIST}. Do not include other emotions in the ranking.
+- Consider the diary entry as a whole rather than focusing on individual sentences or paragraphs, ranking based on the prominence of emotions throughout the entry.
+- Maintain an objective stance by focusing only on expressed emotions and not inferring beyond the content of the diary entry.
+- Format the rankings as follows: [first intense emotion, second most intense, third most intense]. The array can include one, two or three elements.
+
+Response must be JSON format:
+{
+    “content”: string,
+    “analysis”: [string],
+}
+`
+
+const instruction_8_emotion = `
+You will analyze diary entries to evaluate their emotional content, focusing on identifying distinct emotions: ${EMOTION_LIST}, as defined below:
+
+8 Primary Emotions
+- Sadness: A feeling of unhappiness, sorrow, or disappointment, often related to a sense of loss, heartbroken, or helplessness.
+- Joy: A feeling of great pleasure, happiness, or delight, typically stemming from positive events, evoking optimism and satisfaction.
+- Anger: An intense emotional response to perceived injustice or frustration, often involving irritation, overwhelmed, or hostility.
+- Fear: An emotional reaction to perceived danger or harm, frequently accompanied by anxiety, unease, or panic.
+- Disgust: A strong aversion or revulsion towards something unpleasant, offensive, or repugnant.
+- Surprise: A brief emotional response to unexpected events, which can be either positive or negative, typically involving astonishment or wonder.
+- Trust: A feeling of confidence and safety, characterized by reliability and comfort in someone or something, fostering a sense of connection.
+- Anticipation: A feeling of excitement, eagerness, or anxious about a future event, often accompanied by expectations of possible outcomes.
+
+Return the response in JSON format, structured as follows:
+
+### 1. Content
+Describe to the user your rationale for how the Analysis properties were derived. 
+
+### 2. Analysis
+- Rank the emotions in the diary entry according to their intensity, starting with the strongest and listing them in descending order.
+- Focus solely on the emotions of Plutchik's model: ${EMOTION_LIST}. Do not include other emotions in the ranking.
+- Consider the diary entry as a whole rather than focusing on individual sentences or paragraphs, ranking based on the prominence of emotions throughout the entry.
+- Maintain an objective stance by focusing only on expressed emotions and not inferring beyond the content of the diary entry.
+- Format the rankings as follows: [first intense emotion, second most intense, third most intense]. The array can include one, two or three elements.
+
+Response must be JSON format:
+{
+    “content”: string,
+    “analysis”: [string],
+}
+`
+
 module.exports = {
     EMOTION_LIST,
     EMOTION_LABEL,
-    PHASE_LABEL
+    PHASE_LABEL,
+    instruction_32_emotion,
+    instruction_8_emotion
 }

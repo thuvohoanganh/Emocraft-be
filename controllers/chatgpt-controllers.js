@@ -39,11 +39,11 @@ const chatbotConversation = async (req, res, next) => {
 
     // Check criteria in current phase
     if (currentPhase === PHASE_LABEL.EXPLORE) {
-        const result = await checkCriteriaExplorePhase(diary, dialog)
-        nextPhase = result.next_phase
-        error = result.error
-        summary = result.summary
-    // } else if (currentPhase === PHASE_LABEL.EXPLAIN) {
+        // const result = await checkCriteriaExplorePhase(diary, dialog)
+        // nextPhase = result.next_phase
+        // error = result.error
+        // summary = result.summary
+        nextPhase = PHASE_LABEL.DETECT
     } else if (currentPhase === PHASE_LABEL.DETECT) {
         nextPhase = PHASE_LABEL.FEEDBACK
     } 
@@ -66,19 +66,18 @@ const chatbotConversation = async (req, res, next) => {
         error = result.error
         response.phase = result.phase
         response.content = result.content
-    // } else if (nextPhase === PHASE_LABEL.EXPLAIN) {
     } else if (nextPhase === PHASE_LABEL.DETECT) {
         const result = await generateExplanationPhase(diary, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content
         response.analysis = result.analysis
-        response.rationale = result.rationale
     } else if (nextPhase === PHASE_LABEL.FEEDBACK) {
         const result = await generateFeedbackPhase(diary, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content
+        response.analysis = result.analysis
     }
     if (!!error) {
         console.error("chatbotConversation error: ", error)
