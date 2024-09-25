@@ -145,15 +145,17 @@ const generateFeedbackPhase = async (diary, dialog) => {
     const instruction = `You are a psychologist. you are good at emotion awareness and you can understand where human emotion come from based on user's diary.
     - Given a dialogue history and user's diary, do they agree or disagree with what you told them?
     - If user are satisfied with the analysis, say thank and tell them to click Finish button on the top screen to finish section.
-    - If user give feedback to you, try to make analysis again based on diary and their feedback. If they tell emotion that is not included in 32 emotions of Plutchik's model, try to convert that to one of 32 emotions and explain to user in the content property.
+    - If user give feedback to you, try to make analysis again based on diary and their feedback and 32 emotions of Plutchik's model (${EMOTION_LIST}). If they told you emotion label, try to convert their emotions to Plutchik’s Wheel of Emotions: ${EMOTION_LIST} and explain to user in the content property.
+    - Only use 32 emotions of Plutchik's model in analysis. 
     - Use JSON format with the following properties:
-    (1) content: your response to user as second person pronoun "YOU". do not use third person pronoun.
-    (2) analysis: based on diary and user's feedback Rank the emotions in the diary entry according to their intensity, starting with the strongest and listing them in descending order. Focus solely on the 32 emotions of Plutchik's model: ${EMOTION_LIST}. Do not include other emotions in the emotion list.  Do not repeat emotion. Format the rankings as follows: [first intense emotion, second most intense, third most intense]. 
-    (3) rationale:
+    (1) content: your response to user as second person pronoun "YOU". do not use third person pronoun. Never return array of emotions in this properties.
+    (2) analysis: based on diary and user's feedback, rank the emotions in the diary entry according to their intensity, starting with the strongest and listing them in descending order. Focus solely on the 32 emotions of Plutchik's model. Do not repeat emotion. Format the analysis as follows: [first intense emotion, second most intense, third most intense]. 
+    (3) rationale: reason how you generate content and analysis properties
     Return the response in JSON format:
         {
             "content": string,
-            "analysis": [string] 
+            "analysis": [string],
+            "rationale": string
         }
     `
     const response = {
@@ -161,6 +163,7 @@ const generateFeedbackPhase = async (diary, dialog) => {
         phase: PHASE_LABEL.FEEDBACK,
         content: "",
         analysis: [],
+        rationale: ""
     }
     const _res = await generateResponse(diary, dialog, instruction)
 
@@ -169,6 +172,8 @@ const generateFeedbackPhase = async (diary, dialog) => {
         if (res.content) {
             response.content = res.content.replace(/^\"+|\"+$/gm, '')
             response.analysis = res.analysis
+            response.rationale = res.rationale
+            console.log("rationale", res.rationale)
         } else {
             response.content = _res
         }
@@ -248,7 +253,7 @@ const generateRationaleSummary = async (diary, dialog, initRationale) => {
     const instruction = `You are and psychologist. you are good at emotion awareness and you can understand where human emotion come from on user's diary. From the dialog, you assess user' emotions from 0 to 5. User gave you feedback about your analysis.
     - From the dialog, determine user agree or disagree with you analysis.
     - If user agree, return exactly your previous rationale. DO NOT include double quotes \" at the start and the end of the response.
-    - If user disagree and give feedback, generate another rationale based on their feedback and your previous rationale.
+    - If user disagree and give feedback, generate another rationale based on their feedback and your previous rationale. 
     ${GENERAL_SPEAKING_RULES}
     This is previous your rationale: ${initRationale}
     Response example: From your diary, there's a sense of tiredness which can be associated with a low level of sadness. There's also a hint of joy from spending time with a friend and visting the cathedral. There's no indication of disgust, anger, fear, or surprise in your writing.

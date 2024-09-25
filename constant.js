@@ -1,4 +1,4 @@
-const EMOTION_LIST = "calm, joy, delighted, acceptance, trust, admiration, anxious, fear, terror, distraction, surprise, amazement, unhappy, sadness, heartbroken, tired, disgust, horrified, annoyance, anger, overwhelmed, interest, anticipation, focused, love, submission, awe, disapproval, remorse, contempt, aggressiveness, optimism";
+const EMOTION_LIST = "calm, joy, delighted, acceptance, trust, admiration, anxious, fear, terror, distraction, surprise, amazement, unhappy, sadness, heartbroken, tiredness, disgust, horrified, annoyance, anger, overwhelmed, interest, anticipation, focused, love, submission, awe, disapproval, remorse, contempt, aggressiveness, optimism";
 const EMOTION_LABEL = {
     SERENITY: "calm",
     JOY: "joy",
@@ -15,7 +15,7 @@ const EMOTION_LABEL = {
     PENSIVENESS: "unhappy",
     SADNESS: "sadness",
     GRIEF: "heartbroken",
-    BOREDOM: "tired",
+    BOREDOM: "tiredness",
     DISGUST: "disgust",
     LOATHING: "horrified",
     ANNOYANCE: "annoyance",
@@ -56,7 +56,7 @@ You will analyze diary entries to evaluate their emotional content, focusing on 
 - Anticipation: A feeling of excitement, eagerness, or anxious about a future event, often accompanied by expectations of possible outcomes.
 
 16 Emotion Intensity Variations
-calm, delighted, acceptance, admiration, apprehension, terror, distraction, amazement, unhappy, heartbroken, tired, horrified, annoyance, overwhelmed, interest, focused
+calm, delighted, acceptance, admiration, apprehension, terror, distraction, amazement, unhappy, heartbroken, tiredness, horrified, annoyance, overwhelmed, interest, focused
 
 Blended Emotions
 - Love: Joy + Trust
@@ -72,7 +72,7 @@ Blended Emotions
 Return the response in JSON format, structured as follows:
 
 ### 1. Content
-Describe to the user your rationale for how the Analysis properties were derived. 
+Describe to the user what emotions that you recognize in theri diary and how the Analysis properties were derived. 
 
 ### 2. Analysis
 - Rank the emotions in the diary entry according to their intensity, starting with the strongest and listing them in descending order.
