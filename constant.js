@@ -1,4 +1,4 @@
-const EMOTION_LIST = "calm, joy, delighted, acceptance, trust, admiration, anxious, fear, terror, distraction, surprise, amazement, unhappy, sadness, heartbroken, tiredness, disgust, horrified, annoyance, anger, overwhelmed, interest, anticipation, focused, love, submission, awe, disapproval, remorse, contempt, aggressiveness, optimism";
+const EMOTION_LIST = "calm, joy, delighted, acceptance, trust, admiration, anxious, fear, terror, distraction, surprise, amazement, unhappy, sadness, heartbroken, tiredness, disgust, horrified, annoyance, anger, overwhelmed, interest, anticipation, focus, love, submission, awe, disapproval, remorse, contempt, aggressiveness, optimism";
 const EMOTION_LABEL = {
     SERENITY: "calm",
     JOY: "joy",
@@ -23,7 +23,7 @@ const EMOTION_LABEL = {
     RAGE: "overwhelmed",
     INTEREST: "interest",
     ANTICIPATION: "anticipation",
-    VIGILANCE: "focused",
+    VIGILANCE: "focus",
     LOVE: "love",
     SUBMISSION: "submission",
     AWE: "awe",
@@ -80,6 +80,7 @@ Describe to the user what emotions that you recognize in theri diary and how the
 - Consider the diary entry as a whole rather than focusing on individual sentences or paragraphs, ranking based on the prominence of emotions throughout the entry.
 - Maintain an objective stance by focusing only on expressed emotions and not inferring beyond the content of the diary entry.
 - Format the rankings as follows: [first intense emotion, second most intense, third most intense]. The array can include one, two or three elements.
+- Don't list more than 3 emotions.
 
 Response must be JSON format:
 {

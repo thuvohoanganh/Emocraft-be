@@ -33,9 +33,8 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
   (1) key_episode: a key episode that the user described.
   (2) location: where did event happen (e.g. home, office). Only extract text written by user, do not predict.
   (3) people: who were involved in the event (e.g. alone, friend). Only extract text written by user, do not predict.
-  (4) move_to_next: When key_episode, location, people are not null or user don't want to answer your questions, you go the next step immediately. Make sure that key_episode, location, people are not null.
+  (4) move_to_next: if user don't want to answer your questions, move to next step. When key_episode, location, people are fullfiled, move to the next step. Make sure that key_episode, location, people are not null before move to the next step. Don't consider property empathized to decide to move next or not. Don't return false when key_episode, location, people are fullfiled.
   (5) rationale: Describe your rationale on how move_to_next were derived.
-  (6) empathized: you have showed your empathy to user or not. yes is true, no is false
     {
         "summary": {
             "key_episode": string | null,
@@ -43,7 +42,6 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
             "people": string | null,
             "move_to_next": boolean,
             "rationale": string,
-            "empathized": boolean
         }
     }`
 
@@ -51,7 +49,6 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     try {
         const res = JSON.parse(_res)
         if (res.summary.move_to_next) {
-            // response.next_phase = PHASE_LABEL.EXPLAIN
             response.next_phase = PHASE_LABEL.DETECT
         }
         response.summary = res.summary
@@ -78,11 +75,11 @@ const generateResponseExplorePhase = async (diary, dialog, summary) => {
 
     const instruction = `- Given user's dairy and a dialogue summary of what is missing in the memory event.
     - Follow up what user mentioned in the diary.
-    ${!summary.empathized ? (
-            `- Empathize the user's emotion by restating how they felt.
-    - Separate the empathy and the questions with line break.`
-        ) : ""}
-    - Ask them missing contextual information that contribute to user's emotion. Choose the first missing information (null) and ask 1 question about that.
+    ${!summary.people ? (
+    `- Ask user who was involved in the event and contribute to user's emotion.`
+    ) : !summary.location? (
+    `- Ask user where did the event occurred.`
+    ) : ""}
     - Response should be less than 50 words.
     ${GENERAL_SPEAKING_RULES}
 
@@ -149,7 +146,7 @@ const generateFeedbackPhase = async (diary, dialog) => {
     - Only use 32 emotions of Plutchik's model in analysis. 
     - Use JSON format with the following properties:
     (1) content: your response to user as second person pronoun "YOU". do not use third person pronoun. Never return array of emotions in this properties.
-    (2) analysis: based on diary and user's feedback, rank the emotions in the diary entry according to their intensity, starting with the strongest and listing them in descending order. Focus solely on the 32 emotions of Plutchik's model. Do not repeat emotion. Format the analysis as follows: [first intense emotion, second most intense, third most intense]. 
+    (2) analysis: based on diary and user's feedback, rank the emotions in the diary entry according to their intensity, starting with the strongest and listing them in descending order. Focus solely on the 32 emotions of Plutchik's model. Do not repeat emotion. Format the analysis as follows: [first intense emotion, second most intense, third most intense]. If user was satisfied with the previous analysis, return null.
     (3) rationale: reason how you generate content and analysis properties
     Return the response in JSON format:
         {
