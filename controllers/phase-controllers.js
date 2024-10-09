@@ -21,26 +21,29 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
             "user_emotion": "",
             "location": "",
             "people": "",
-            "move_to_next": false,
+            "times_of_day": "",
+            "skip": false,
             "rationale": ''
         },
         next_phase: PHASE_LABEL.EXPLORE
     }
 
     const instruction = `- You are a helpful assistant that analyzes the content of the dialog history.
-- Given a dialogue history and user's diary, determine whether it is reasonable to move on to the next conversation phase or not.
+- Given a dialogue history and user's diary, determine whether user mentioned location and people that are involed in the key episode or not.
 - Use JSON format with the following properties:
   (1) key_episode: a key episode that the user described.
   (2) location: where did event happen (e.g. home, office). Only extract text written by user, do not predict.
   (3) people: who were involved in the event (e.g. alone, friend). Only extract text written by user, do not predict.
-  (4) move_to_next: if user don't want to answer your questions, move to next step. When key_episode, location, people are fullfiled, move to the next step. Make sure that key_episode, location, people are not null before move to the next step. Don't consider property empathized to decide to move next or not. Don't return false when key_episode, location, people are fullfiled.
-  (5) rationale: Describe your rationale on how move_to_next were derived.
+  (4) times_of_day: what time of day did event happen (e.g. morning, noon, night). Only extract text written by user, do not predict.
+  (5) skip: If user don't want to answer your questions, return true. Otherwise, return false.
+  (6) rationale: Describe your rationale on how properties were derived.
     {
         "summary": {
             "key_episode": string | null,
             "location": string | null,
             "people": string | null,
-            "move_to_next": boolean,
+            "times_of_day": string | null,
+            "skip": boolean,
             "rationale": string,
         }
     }`
@@ -48,8 +51,13 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     const _res = await checkCriteria(diary, dialog, instruction)
     try {
         const res = JSON.parse(_res)
-        if (res.summary.move_to_next) {
+        if (res.summary.key_episode && res.summary.location && res.summary.people && res.summary.times_of_day) {
             response.next_phase = PHASE_LABEL.DETECT
+        }
+        else if (res.summary.skip) {
+            response.next_phase = PHASE_LABEL.DETECT
+        } else {
+            response.next_phase = PHASE_LABEL.EXPLORE
         }
         response.summary = res.summary
     } catch {
@@ -75,10 +83,14 @@ const generateResponseExplorePhase = async (diary, dialog, summary) => {
 
     const instruction = `- Given user's dairy and a dialogue summary of what is missing in the memory event.
     - Follow up what user mentioned in the diary.
-    ${!summary.people ? (
+    ${!summary.key_episode ? (
+    `- Ask user what happend to them.`
+    ) :!summary.people ? (
     `- Ask user who was involved in the event and contribute to user's emotion.`
     ) : !summary.location? (
     `- Ask user where did the event occurred.`
+    ) : !summary.times_of_day? (
+    `- Guess the key event happened at what time of day (e.g morning, noon, evening, night) and ask user.`
     ) : ""}
     - Response should be less than 50 words.
     ${GENERAL_SPEAKING_RULES}
@@ -100,10 +112,9 @@ rationale: ${summary.rationale}
     return response
 }
 
-const generateExplanationPhase = async (diary, dialog) => {
+const generateDetectPhase = async (diary, dialog) => {
 
     const task_instruction = instruction_32_emotion
-    const removed = "- Rank the three most prominent emotions in the diary entry according to their intensity, starting with the strongest and listing them in descending order."
 
     const response = {
         error: "",
@@ -133,6 +144,8 @@ const generateExplanationPhase = async (diary, dialog) => {
         }
     }
 
+    response.content = response.content.replace(/^\"+|\"+$/gm, '')
+
     console.log("Response: ", response);
     return response
 }
@@ -142,11 +155,11 @@ const generateFeedbackPhase = async (diary, dialog) => {
     const instruction = `You are a psychologist. you are good at emotion awareness and you can understand where human emotion come from based on user's diary.
     - Given a dialogue history and user's diary, do they agree or disagree with what you told them?
     - If user are satisfied with the analysis, say thank and tell them to click Finish button on the top screen to finish section.
-    - If user give feedback to you, try to make analysis again based on diary and their feedback and 32 emotions of Plutchik's model (${EMOTION_LIST}). If they told you emotion label, try to convert their emotions to Plutchik’s Wheel of Emotions: ${EMOTION_LIST} and explain to user in the content property.
+    - If user give feedback to you, try to make analysis again based on diary and their feedback and 32 emotions of Plutchik's model (${EMOTION_LIST}). If they told you emotion label, try to convert their emotions to Plutchik’s Wheel of Emotions and explain to user in the content property.
     - Only use 32 emotions of Plutchik's model in analysis. 
     - Use JSON format with the following properties:
     (1) content: your response to user as second person pronoun "YOU". do not use third person pronoun. Never return array of emotions in this properties.
-    (2) analysis: based on diary and user's feedback, rank the emotions in the diary entry according to their intensity, starting with the strongest and listing them in descending order. Focus solely on the 32 emotions of Plutchik's model. Do not repeat emotion. Format the analysis as follows: [first intense emotion, second most intense, third most intense]. If user was satisfied with the previous analysis, return null.
+    (2) analysis: based on diary, detect which emotions of Plutchik's model in the diary entry according to their intensity, starting with the strongest and listing them in descending order. Make sure to consider only 32 emotions of Plutchik's model: ${EMOTION_LIST}. Do not repeat emotion. Format the analysis as follows: [first intense emotion, second most intense, third most intense]. If user was satisfied with the previous analysis, return null.
     (3) rationale: reason how you generate content and analysis properties
     Return the response in JSON format:
         {
@@ -264,7 +277,7 @@ const generateRationaleSummary = async (diary, dialog, initRationale) => {
 module.exports = {
     checkCriteriaExplorePhase,
     generateResponseExplorePhase,
-    generateExplanationPhase,
+    generateDetectPhase,
     generateFeedbackPhase,
     generateResponse,
     generateRationaleSummary,

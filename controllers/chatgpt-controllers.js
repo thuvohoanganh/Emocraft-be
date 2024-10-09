@@ -6,7 +6,7 @@ const Summary = require('../models/summary');
 const {
     checkCriteriaExplorePhase,
     generateResponseExplorePhase,
-    generateExplanationPhase,
+    generateDetectPhase,
     generateFeedbackPhase
 } = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
@@ -66,7 +66,7 @@ const chatbotConversation = async (req, res, next) => {
         response.phase = result.phase
         response.content = result.content
     } else if (nextPhase === PHASE_LABEL.DETECT) {
-        const result = await generateExplanationPhase(diary, dialog)
+        const result = await generateDetectPhase(diary, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content

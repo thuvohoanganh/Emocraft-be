@@ -1,34 +1,34 @@
-const EMOTION_LIST = "calm, joy, delighted, acceptance, trust, admiration, anxious, fear, terror, distraction, surprise, amazement, unhappy, sadness, heartbroken, tiredness, disgust, horrified, annoyance, anger, overwhelmed, interest, anticipation, focus, love, submission, awe, disapproval, remorse, contempt, aggressiveness, optimism";
+const EMOTION_LIST = "calm, joy, delight, acceptance, trust, admiration, anxiety, fear, terror, distraction, surprise, amazement, unhappyness, sadness, heartbroken, tiredness, disgust, horror, annoyance, anger, overwhelmed, interest, anticipation, focus, love, submission, shock, disapproval, guilt, contempt, aggressiveness, optimism";
 const EMOTION_LABEL = {
     SERENITY: "calm",
     JOY: "joy",
-    ECSTASY: "delighted",
+    ECSTASY: "delight",
     ACCEPTANCE: "acceptance",
     TRUST: "trust",
     ADMIRATION: "admiration",
-    APPREHENSION: "anxious",
+    APPREHENSION: "anxiety",
     FEAR: "fear",
     TERROR: "terror",
     DISTRACTION: "distraction",
     SURPRISE: "surprise",
     AMAZEMENT: "amazement",
-    PENSIVENESS: "unhappy",
+    PENSIVENESS: "unhappyness",
     SADNESS: "sadness",
     GRIEF: "heartbroken",
     BOREDOM: "tiredness",
     DISGUST: "disgust",
-    LOATHING: "horrified",
+    LOATHING: "horror",
     ANNOYANCE: "annoyance",
     ANGER: "anger",
-    RAGE: "overwhelmed",
+    RAGE: "overwhelmedness",
     INTEREST: "interest",
     ANTICIPATION: "anticipation",
     VIGILANCE: "focus",
     LOVE: "love",
     SUBMISSION: "submission",
-    AWE: "awe",
+    AWE: "shock",
     DISAPPROVAL: "disapproval",
-    REMORSE: "remorse",
+    REMORSE: "guilt",
     CONTEMPT: "contempt",
     AGGRESSIVENESS: "aggressiveness",
     OPTIMISM: "optimism"
@@ -48,22 +48,22 @@ You will analyze diary entries to evaluate their emotional content, focusing on 
 8 Primary Emotions
 - Sadness: A feeling of unhappiness, sorrow, or disappointment, often related to a sense of loss, heartbroken, or helplessness.
 - Joy: A feeling of great pleasure, happiness, or delight, typically stemming from positive events, evoking optimism and satisfaction.
-- Anger: An intense emotional response to perceived injustice or frustration, often involving irritation, overwhelmed, or hostility.
+- Anger: An intense emotional response to perceived injustice or frustration, often involving irritation, overwhelmedness, or hostility.
 - Fear: An emotional reaction to perceived danger or harm, frequently accompanied by anxiety, unease, or panic.
 - Disgust: A strong aversion or revulsion towards something unpleasant, offensive, or repugnant.
 - Surprise: A brief emotional response to unexpected events, which can be either positive or negative, typically involving astonishment or wonder.
 - Trust: A feeling of confidence and safety, characterized by reliability and comfort in someone or something, fostering a sense of connection.
-- Anticipation: A feeling of excitement, eagerness, or anxious about a future event, often accompanied by expectations of possible outcomes.
+- Anticipation: A feeling of excitement, eagerness, or anxiety about a future event, often accompanied by expectations of possible outcomes.
 
 16 Emotion Intensity Variations
-calm, delighted, acceptance, admiration, apprehension, terror, distraction, amazement, unhappy, heartbroken, tiredness, horrified, annoyance, overwhelmed, interest, focused
+calm, delight, acceptance, admiration, anxiety, terror, distraction, amazement, unhappyness, heartbroken, tiredness, horror, annoyance, overwhelmedness, interest, focused
 
 Blended Emotions
 - Love: Joy + Trust
 - Submission: Trust + Fear
-- Awe: Fear + Surprise
+- Shock: Fear + Surprise
 - Disapproval: Surprise + Sadness
-- Remorse: Sadness + Disgust
+- Guilt: Sadness + Disgust
 - Contempt: Disgust + Anger
 - Aggressiveness: Anger + Anticipation
 - Optimism: Anticipation + Joy
@@ -95,12 +95,12 @@ You will analyze diary entries to evaluate their emotional content, focusing on 
 8 Primary Emotions
 - Sadness: A feeling of unhappiness, sorrow, or disappointment, often related to a sense of loss, heartbroken, or helplessness.
 - Joy: A feeling of great pleasure, happiness, or delight, typically stemming from positive events, evoking optimism and satisfaction.
-- Anger: An intense emotional response to perceived injustice or frustration, often involving irritation, overwhelmed, or hostility.
+- Anger: An intense emotional response to perceived injustice or frustration, often involving irritation, overwhelmedness, or hostility.
 - Fear: An emotional reaction to perceived danger or harm, frequently accompanied by anxiety, unease, or panic.
 - Disgust: A strong aversion or revulsion towards something unpleasant, offensive, or repugnant.
 - Surprise: A brief emotional response to unexpected events, which can be either positive or negative, typically involving astonishment or wonder.
 - Trust: A feeling of confidence and safety, characterized by reliability and comfort in someone or something, fostering a sense of connection.
-- Anticipation: A feeling of excitement, eagerness, or anxious about a future event, often accompanied by expectations of possible outcomes.
+- Anticipation: A feeling of excitement, eagerness, or anxiety about a future event, often accompanied by expectations of possible outcomes.
 
 Return the response in JSON format, structured as follows:
 
