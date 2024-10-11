@@ -35,11 +35,11 @@ const EMOTION_LABEL = {
 };
 
 const PHASE_LABEL = {
-    EXPLORE: "explore",
-    // EXPLAIN: "explain",
-    DETECT: "detect", // change explain to detect
+    BEGINNING: "beginning",
+    MISSING_EMOTION: "missing_emotion",
+    MISSING_CONTEXT: "missing_context",
+    FULLFILL: "fulfill",
     FEEDBACK: "feedback",
-    END: "end"
 }
 
 const instruction_32_emotion = `

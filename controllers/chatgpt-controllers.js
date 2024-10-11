@@ -38,14 +38,15 @@ const chatbotConversation = async (req, res, next) => {
     let summary = null
 
     // Check criteria in current phase
-    if (currentPhase === PHASE_LABEL.EXPLORE) {
+    if (currentPhase === PHASE_LABEL.BEGINNING) {
         const result = await checkCriteriaExplorePhase(diary, dialog)
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
-    } else if (currentPhase === PHASE_LABEL.DETECT) {
-        nextPhase = PHASE_LABEL.FEEDBACK
     } 
+    // else if (currentPhase === PHASE_LABEL.MISSING_CONTEXT) {
+    //     nextPhase = PHASE_LABEL.FEEDBACK
+    // } 
 
     if (!!error) {
         console.error(error)
@@ -56,22 +57,26 @@ const chatbotConversation = async (req, res, next) => {
         return next(_error);
     }
 
+    // console.log("summary", summary)
     console.log("nextPhase", nextPhase)
-    console.log("summary", summary)
 
     // generate response
-    if (nextPhase === PHASE_LABEL.EXPLORE) {
+    if (nextPhase === PHASE_LABEL.BEGINNING) {
         const result = await generateResponseExplorePhase(diary, dialog, summary)
         error = result.error
         response.phase = result.phase
         response.content = result.content
-    } else if (nextPhase === PHASE_LABEL.DETECT) {
-        const result = await generateDetectPhase(diary, dialog)
-        error = result.error
-        response.phase = result.phase
-        response.content = result.content
-        response.analysis = result.analysis
-    } else if (nextPhase === PHASE_LABEL.FEEDBACK) {
+    } 
+    else if (nextPhase === PHASE_LABEL.FULLFILL) {
+        response.content = PHASE_LABEL.FULLFILL
+    } 
+    else if (nextPhase === PHASE_LABEL.MISSING_CONTEXT) {
+        response.content = PHASE_LABEL.MISSING_CONTEXT
+    } 
+    else if (nextPhase === PHASE_LABEL.MISSING_EMOTION) {
+        response.content = PHASE_LABEL.MISSING_EMOTION
+    } 
+    else if (nextPhase === PHASE_LABEL.FEEDBACK) {
         const result = await generateFeedbackPhase(diary, dialog)
         error = result.error
         response.phase = result.phase
@@ -87,10 +92,9 @@ const chatbotConversation = async (req, res, next) => {
         return next(errorResponse);
     }
 
-    // if (currentPhase === PHASE_LABEL.EXPLORE && nextPhase === PHASE_LABEL.EXPLAIN) {
-    if (currentPhase === PHASE_LABEL.EXPLORE && nextPhase === PHASE_LABEL.DETECT) {
-        updateDiarySummary(userid, diaryid, summary)
-    }
+    // if (currentPhase === PHASE_LABEL.EXPLORE && nextPhase === PHASE_LABEL.DETECT) {
+    //     updateDiarySummary(userid, diaryid, summary)
+    // }
 
     if (response.content[0] === "") {
         response.content = response.content.replace(/^\"+|\"+$/gm,'')

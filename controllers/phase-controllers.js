@@ -21,27 +21,30 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
             "user_emotion": "",
             "location": "",
             "people": "",
+            "emotions": null,
             "times_of_day": "",
             "skip": false,
             "rationale": ''
         },
-        next_phase: PHASE_LABEL.EXPLORE
+        next_phase: PHASE_LABEL.BEGINNING
     }
 
     const instruction = `- You are a helpful assistant that analyzes the content of the dialog history.
 - Given a dialogue history and user's diary, determine whether user mentioned location and people that are involed in the key episode or not.
 - Use JSON format with the following properties:
-  (1) key_episode: a key episode that the user described.
-  (2) location: where did event happen (e.g. home, office). Only extract text written by user, do not predict.
-  (3) people: who were involved in the event (e.g. alone, friend). Only extract text written by user, do not predict.
-  (4) times_of_day: what time of day did event happen (e.g. morning, noon, night). Only extract text written by user, do not predict.
-  (5) skip: If user don't want to answer your questions, return true. Otherwise, return false.
-  (6) rationale: Describe your rationale on how properties were derived.
+(1) key_episode: a key episode that the user described.
+(2) location: where did event happen (e.g. home, office). Only extract text written by user, do not predict.
+(3) people: who were involved in the event (e.g. alone, friend). Only extract text written by user, do not predict.
+(4) emotions: What are the emotions user express in the diary. Only extract text written by user, do not predict.
+(5) times_of_day: what time of day did event happen (e.g. morning, noon, night). Only extract text written by user, do not predict.
+(6) skip: If user don't want to answer your questions, return true. Otherwise, return false.
+(7) rationale: Describe your rationale on how properties were derived.
     {
         "summary": {
             "key_episode": string | null,
             "location": string | null,
             "people": string | null,
+            "emotions": [string] | null,
             "times_of_day": string | null,
             "skip": boolean,
             "rationale": string,
@@ -51,14 +54,22 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     const _res = await checkCriteria(diary, dialog, instruction)
     try {
         const res = JSON.parse(_res)
+        console.log("res.summary", res.summary)
         if (res.summary.key_episode && res.summary.location && res.summary.people && res.summary.times_of_day) {
-            response.next_phase = PHASE_LABEL.DETECT
+            if (res.summary.emotions) {
+                response.next_phase = PHASE_LABEL.FULLFILL
+            } else {
+                response.next_phase = PHASE_LABEL.MISSING_EMOTION            
+            }
         }
-        else if (res.summary.skip) {
-            response.next_phase = PHASE_LABEL.DETECT
+        else if (res.summary.emotions && !(res.summary.key_episode || res.summary.location || res.summary.people || res.summary.times_of_day)) {
+            response.next_phase = PHASE_LABEL.MISSING_CONTEXT
         } else {
-            response.next_phase = PHASE_LABEL.EXPLORE
+            response.next_phase = PHASE_LABEL.BEGINNING
         }
+        // else if (res.summary.skip) {
+        //     response.next_phase = PHASE_LABEL.DETECT
+        // }
         response.summary = res.summary
     } catch {
         if (!_res) {
@@ -77,7 +88,7 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
 const generateResponseExplorePhase = async (diary, dialog, summary) => {
     const response = {
         error: "",
-        phase: PHASE_LABEL.EXPLORE,
+        phase: PHASE_LABEL.BEGINNING,
         content: "",
     }
 
@@ -104,7 +115,6 @@ rationale: ${summary.rationale}
     const res = await generateResponse(diary, dialog, instruction)
     if (!res) {
         response.error = "ChatGPT failed"
-        response.phase = PHASE_LABEL.EXPLORE
         return response
     }
 
