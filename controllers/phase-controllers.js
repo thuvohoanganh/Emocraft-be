@@ -1,7 +1,7 @@
 const OpenAI = require("openai")
 const dotenv = require("dotenv")
-const { EMOTION_LABEL, EMOTION_LIST } = require("../constant");
-const { PHASE_LABEL, instruction_32_emotion, instruction_8_emotion } = require('../constant')
+const { EMOTION_LIST } = require("../constant");
+const { PHASE_LABEL, instruction_32_emotion } = require('../constant')
 
 dotenv.config()
 const openai = new OpenAI({
@@ -32,11 +32,11 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     const instruction = `- You are a helpful assistant that analyzes the content of the dialog history.
 - Given a dialogue history and user's diary, determine whether user mentioned location and people that are involed in the key episode or not.
 - Use JSON format with the following properties:
-(1) key_episode: a key episode that the user described.
+(1) key_episode: the most key episode that is relating to user's emotion.
 (2) location: where did event happen (e.g. home, office). Only extract text written by user, do not predict.
 (3) people: who were involved in the event (e.g. alone, friend). Only extract text written by user, do not predict.
-(4) emotions: What are the emotions user express in the diary. Only extract text written by user, do not predict.
-(5) times_of_day: what time of day did event happen (e.g. morning, noon, night). Only extract text written by user, do not predict.
+(4) emotions: What are the emotions user express in the diary (e.g ${EMOTION_LIST}). Only extract text written by user, do not predict.
+(5) times_of_day: what time of day did event happen (e.g. morning, noon, night). Only extract text written by user, do not predict. Return only one word.
 (6) skip: If user don't want to answer your questions, return true. Otherwise, return false.
 (7) rationale: Describe your rationale on how properties were derived.
     {
@@ -54,12 +54,11 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     const _res = await checkCriteria(diary, dialog, instruction)
     try {
         const res = JSON.parse(_res)
-        console.log("res.summary", res.summary)
         if (res.summary.key_episode && res.summary.location && res.summary.people && res.summary.times_of_day) {
             if (res.summary.emotions) {
                 response.next_phase = PHASE_LABEL.FULLFILL
             } else {
-                response.next_phase = PHASE_LABEL.MISSING_EMOTION            
+                response.next_phase = PHASE_LABEL.MISSING_EMOTION
             }
         }
         else if (res.summary.emotions && !(res.summary.key_episode || res.summary.location || res.summary.people || res.summary.times_of_day)) {
@@ -95,22 +94,16 @@ const generateResponseExplorePhase = async (diary, dialog, summary) => {
     const instruction = `- Given user's dairy and a dialogue summary of what is missing in the memory event.
     - Follow up what user mentioned in the diary.
     ${!summary.key_episode ? (
-    `- Ask user what happend to them.`
-    ) :!summary.people ? (
-    `- Ask user who was involved in the event and contribute to user's emotion.`
-    ) : !summary.location? (
-    `- Ask user where did the event occurred.`
-    ) : !summary.times_of_day? (
-    `- Guess the key event happened at what time of day (e.g morning, noon, evening, night) and ask user.`
-    ) : ""}
+            `- Ask user what happend to them.`
+        ) : !summary.people ? (
+            `- Ask user who was involved in the event and contribute to user's emotion.`
+        ) : !summary.location ? (
+            `- Ask user where did the event occurred.`
+        ) : !summary.times_of_day ? (
+            `- Guess the key event happened at what time of day (e.g morning, noon, evening, night) and ask user.`
+        ) : ""}
     - Response should be less than 50 words.
     ${GENERAL_SPEAKING_RULES}
-
-Dialog summary: 
-key_episode: ${summary.key_episode},
-people:  ${summary.people},
-location: ${summary.location}
-rationale: ${summary.rationale}
 `
     const res = await generateResponse(diary, dialog, instruction)
     if (!res) {
@@ -122,14 +115,13 @@ rationale: ${summary.rationale}
     return response
 }
 
-const generateDetectPhase = async (diary, dialog) => {
+const generateDetectEmotion = async (diary, dialog) => {
 
     const task_instruction = instruction_32_emotion
 
     const response = {
         error: "",
-        // phase: PHASE_LABEL.EXPLAIN,
-        phase: PHASE_LABEL.DETECT,
+        phase: PHASE_LABEL.MISSING_EMOTION,
         content: "",
         analysis: null,
         rationale: ""
@@ -159,7 +151,49 @@ const generateDetectPhase = async (diary, dialog) => {
     console.log("Response: ", response);
     return response
 }
-// If user are satisfied with the analysis, return null.
+
+const confirmEmotions = async (diary, dialog, summary) => {
+    const task_instruction = ` 
+    input array: ${JSON.stringify(summary.emotions)}
+    Plutchik's emotion model: ${EMOTION_LIST}.
+    input array are the emotions detected in the diary
+Return the response in JSON format, structured as follows:
+### Analysis
+look at each value in the input array. If the value in the input list is not included in the Plutchik's emotion model, try to replace it with the most similar meaning in the Plutchik's emotion model. If it is the same, remain it. The output array have to have the same lenght with input array.
+### rationale
+reason how you generate content and analysis properties. Your response to user should be as second person pronoun "YOU". Your response should be shorter than 50 words.
+
+Response must be JSON format:
+{
+    “analysis”: [string],
+    “rationale”: string
+}
+    `
+
+    const response = {
+        error: "",
+        phase: PHASE_LABEL.FULLFILL,
+        content: "",
+        analysis: null,
+        rationale: ""
+    }
+
+    const _res = await generateResponse(diary, [], task_instruction)
+
+    try {
+        const res = JSON.parse(_res)
+        response.analysis = res.analysis
+        response.content = res.rationale
+    } catch {
+        console.error(_res)
+        response.content = _res
+    }
+
+    response.content = response.content?.replace(/^\"+|\"+$/gm, '')
+
+    console.log("Response: ", response);
+    return response
+}
 
 const generateFeedbackPhase = async (diary, dialog) => {
     const instruction = `You are a psychologist. you are good at emotion awareness and you can understand where human emotion come from based on user's diary.
@@ -170,7 +204,7 @@ const generateFeedbackPhase = async (diary, dialog) => {
     - Use JSON format with the following properties:
     (1) content: your response to user as second person pronoun "YOU". do not use third person pronoun. Never return array of emotions in this properties.
     (2) analysis: based on diary, detect which emotions of Plutchik's model in the diary entry according to their intensity, starting with the strongest and listing them in descending order. Make sure to consider only 32 emotions of Plutchik's model: ${EMOTION_LIST}. Do not repeat emotion. Format the analysis as follows: [first intense emotion, second most intense, third most intense]. If user was satisfied with the previous analysis, return null.
-    (3) rationale: reason how you generate content and analysis properties
+    (3) rationale: reason how you generate content and analysis properties. Your response to user should be as second person pronoun "YOU". Your response should be shorter than 50 words.
     Return the response in JSON format:
         {
             "content": string,
@@ -193,7 +227,6 @@ const generateFeedbackPhase = async (diary, dialog) => {
             response.content = res.content.replace(/^\"+|\"+$/gm, '')
             response.analysis = res.analysis
             response.rationale = res.rationale
-            console.log("rationale", res.rationale)
         } else {
             response.content = _res
         }
@@ -287,9 +320,10 @@ const generateRationaleSummary = async (diary, dialog, initRationale) => {
 module.exports = {
     checkCriteriaExplorePhase,
     generateResponseExplorePhase,
-    generateDetectPhase,
+    generateDetectEmotion,
     generateFeedbackPhase,
     generateResponse,
     generateRationaleSummary,
+    confirmEmotions
 }
 

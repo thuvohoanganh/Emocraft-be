@@ -6,8 +6,9 @@ const Summary = require('../models/summary');
 const {
     checkCriteriaExplorePhase,
     generateResponseExplorePhase,
-    generateDetectPhase,
-    generateFeedbackPhase
+    generateDetectEmotion,
+    generateFeedbackPhase,
+    confirmEmotions,
 } = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
@@ -44,9 +45,12 @@ const chatbotConversation = async (req, res, next) => {
         error = result.error
         summary = result.summary
     } 
-    // else if (currentPhase === PHASE_LABEL.MISSING_CONTEXT) {
-    //     nextPhase = PHASE_LABEL.FEEDBACK
-    // } 
+    else if (currentPhase === PHASE_LABEL.MISSING_EMOTION) {
+        nextPhase = PHASE_LABEL.FEEDBACK
+    } 
+    else if (currentPhase === PHASE_LABEL.FULLFILL) {
+        nextPhase = PHASE_LABEL.FEEDBACK
+    } 
 
     if (!!error) {
         console.error(error)
@@ -57,7 +61,7 @@ const chatbotConversation = async (req, res, next) => {
         return next(_error);
     }
 
-    // console.log("summary", summary)
+    console.log("summary", summary)
     console.log("nextPhase", nextPhase)
 
     // generate response
@@ -68,13 +72,21 @@ const chatbotConversation = async (req, res, next) => {
         response.content = result.content
     } 
     else if (nextPhase === PHASE_LABEL.FULLFILL) {
-        response.content = PHASE_LABEL.FULLFILL
+        const result = await confirmEmotions(diary, dialog, summary)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+        response.analysis = result.analysis
     } 
     else if (nextPhase === PHASE_LABEL.MISSING_CONTEXT) {
         response.content = PHASE_LABEL.MISSING_CONTEXT
     } 
     else if (nextPhase === PHASE_LABEL.MISSING_EMOTION) {
-        response.content = PHASE_LABEL.MISSING_EMOTION
+        const result = await generateDetectEmotion(diary, dialog)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+        response.analysis = result.analysis
     } 
     else if (nextPhase === PHASE_LABEL.FEEDBACK) {
         const result = await generateFeedbackPhase(diary, dialog)
