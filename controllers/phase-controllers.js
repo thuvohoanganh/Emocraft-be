@@ -9,7 +9,7 @@ const openai = new OpenAI({
 });
 
 const GENERAL_SPEAKING_RULES = `
-- DO NOT include double quotes \" at the start and the end of the response.
+- Do not include double quotes \" at the start and the end of the response.
 - Do not include any "tip:", "question:" etc and do not use hashtags. 
 `
 
@@ -17,7 +17,7 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     const response = {
         error: "",
         summary: {
-            "key_episode": "",
+            "event": "",
             "user_emotion": "",
             "location": "",
             "people": "",
@@ -32,16 +32,16 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     const instruction = `- You are a helpful assistant that analyzes the content of the dialog history.
 - Given a dialogue history and user's diary, determine whether user mentioned location and people that are involed in the key episode or not.
 - Use JSON format with the following properties:
-(1) key_episode: the most key episode that is relating to user's emotion.
-(2) location: where did event happen (e.g. home, office). Only extract text written by user, do not predict.
-(3) people: who were involved in the event (e.g. alone, friend). Only extract text written by user, do not predict.
-(4) emotions: What are the emotions user express in the diary (e.g ${EMOTION_LIST}). Only extract text written by user, do not predict.
-(5) times_of_day: what time of day did event happen (e.g. morning, noon, night). Only extract text written by user, do not predict. Return only one word.
-(6) skip: If user don't want to answer your questions, return true. Otherwise, return false.
-(7) rationale: Describe your rationale on how properties were derived.
+ emotions: First, extract the emotions user expressed clearly in the diary. Only extract text written by user, do not predict. If no emotion was mentioned, return null and end. If you detect any emotions, try to convert to one of emotion in this list: ${EMOTION_LIST}). 
+ event: the key event that causes user's emotion.
+ location: where did user usually have that emotions (e.g. home, office, school). Only extract text written by user, do not predict.
+ people: who did cause those emotions (e.g. alone, friend family). Only extract text written by user, do not predict.
+ times_of_day: what time of day did event happen (e.g. morning, noon, night). Only extract text written by user, do not predict. Return only one word.
+ skip: If user don't want to answer your questions, return true. Otherwise, return false.
+ rationale: Describe your rationale on how properties were derived.
     {
         "summary": {
-            "key_episode": string | null,
+            "event": string | null,
             "location": string | null,
             "people": string | null,
             "emotions": [string] | null,
@@ -54,14 +54,14 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     const _res = await checkCriteria(diary, dialog, instruction)
     try {
         const res = JSON.parse(_res)
-        if (res.summary.key_episode && res.summary.location && res.summary.people && res.summary.times_of_day) {
+        if (res.summary.event && res.summary.location && res.summary.people && res.summary.times_of_day) {
             if (res.summary.emotions) {
                 response.next_phase = PHASE_LABEL.FULLFILL
             } else {
                 response.next_phase = PHASE_LABEL.MISSING_EMOTION
             }
         }
-        else if (res.summary.emotions && !(res.summary.key_episode || res.summary.location || res.summary.people || res.summary.times_of_day)) {
+        else if (res.summary.emotions && !(res.summary.event || res.summary.location || res.summary.people || res.summary.times_of_day)) {
             response.next_phase = PHASE_LABEL.MISSING_CONTEXT
         } else {
             response.next_phase = PHASE_LABEL.BEGINNING
@@ -84,16 +84,16 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     return response
 }
 
-const generateResponseExplorePhase = async (diary, dialog, summary) => {
+const askMissingInfor = async (diary, dialog, summary) => {
     const response = {
         error: "",
         phase: PHASE_LABEL.BEGINNING,
         content: "",
     }
-
     const instruction = `- Given user's dairy and a dialogue summary of what is missing in the memory event.
     - Follow up what user mentioned in the diary.
-    ${!summary.key_episode ? (
+    ${JSON.stringify(summary)}
+    ${!summary.event ? (
             `- Ask user what happend to them.`
         ) : !summary.people ? (
             `- Ask user who was involved in the event and contribute to user's emotion.`
@@ -103,8 +103,11 @@ const generateResponseExplorePhase = async (diary, dialog, summary) => {
             `- Guess the key event happened at what time of day (e.g morning, noon, evening, night) and ask user.`
         ) : ""}
     - Response should be less than 50 words.
+    - Ask only one question.
     ${GENERAL_SPEAKING_RULES}
 `
+console.log("instruction", instruction)
+
     const res = await generateResponse(diary, dialog, instruction)
     if (!res) {
         response.error = "ChatGPT failed"
@@ -191,7 +194,6 @@ Response must be JSON format:
 
     response.content = response.content?.replace(/^\"+|\"+$/gm, '')
 
-    console.log("Response: ", response);
     return response
 }
 
@@ -319,7 +321,7 @@ const generateRationaleSummary = async (diary, dialog, initRationale) => {
 
 module.exports = {
     checkCriteriaExplorePhase,
-    generateResponseExplorePhase,
+    askMissingInfor,
     generateDetectEmotion,
     generateFeedbackPhase,
     generateResponse,

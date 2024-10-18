@@ -5,7 +5,7 @@ const User = require('../models/user');
 const Summary = require('../models/summary');
 const {
     checkCriteriaExplorePhase,
-    generateResponseExplorePhase,
+    askMissingInfor,
     generateDetectEmotion,
     generateFeedbackPhase,
     confirmEmotions,
@@ -66,7 +66,7 @@ const chatbotConversation = async (req, res, next) => {
 
     // generate response
     if (nextPhase === PHASE_LABEL.BEGINNING) {
-        const result = await generateResponseExplorePhase(diary, dialog, summary)
+        const result = await askMissingInfor(diary, dialog, summary)
         error = result.error
         response.phase = result.phase
         response.content = result.content
