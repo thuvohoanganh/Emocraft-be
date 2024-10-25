@@ -51,7 +51,7 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
         }
     }`
 
-    const _res = await checkCriteria(diary, dialog, instruction)
+    const _res = await generateAnalysis(diary, dialog, instruction)
     try {
         const res = JSON.parse(_res)
         if (res.summary.event && res.summary.location && res.summary.people && res.summary.times_of_day) {
@@ -155,7 +155,7 @@ const generateDetectEmotion = async (diary, dialog) => {
     return response
 }
 
-const confirmEmotions = async (diary, dialog, summary) => {
+const confirmEmotions = async (diary, summary) => {
     const task_instruction = ` 
     input array: ${JSON.stringify(summary.emotions)}
     Plutchik's emotion model: ${EMOTION_LIST}.
@@ -275,7 +275,7 @@ const generateResponse = async (diary, dialog, instruction) => {
     return response
 }
 
-const checkCriteria = async (diary, dialog, instruction) => {
+const generateAnalysis = async (diary, dialog, instruction) => {
     let response = ""
     const messages = [
         {
@@ -317,6 +317,44 @@ const generateRationaleSummary = async (diary, dialog, initRationale) => {
     updatedRationale = updatedRationale.replace(/^\"+|\"+$/gm, '')
 
     return updatedRationale
+}
+
+const consolidate = async (diary, dialog) => {
+    const response = {
+        error: "",
+        phase: PHASE_LABEL.BEGINNING,
+        content: "",
+    }
+    const instruction = `
+- Use JSON format with the following properties:
+ emotions: First, extract the emotions user expressed clearly in the diary. Only extract text written by user, do not predict. If no emotion was mentioned, return null and end. If you detect any emotions, try to convert to one of emotion in this list: ${EMOTION_LIST}). 
+ event: the key event that causes user's emotion.
+ location: where did user usually have that emotions (e.g. home, office, school). Only extract text written by user, do not predict.
+ people: who did cause those emotions (e.g. alone, friend family). Only extract text written by user, do not predict.
+ times_of_day: what time of day did event happen (e.g. morning, noon, night). Only extract text written by user, do not predict. Return only one word.
+ skip: If user don't want to answer your questions, return true. Otherwise, return false.
+ rationale: Describe your rationale on how properties were derived.
+    {
+        "summary": {
+            "event": string | null,
+            "location": string | null,
+            "people": string | null,
+            "emotions": [string] | null,
+            "times_of_day": string | null,
+            "skip": boolean,
+            "rationale": string,
+        }
+    }`
+
+const _res = await generateAnalysis(diary, dialog, instruction)
+try {
+    const res = JSON.parse(_res)
+    
+} catch {
+    
+}
+
+    return response
 }
 
 module.exports = {
