@@ -80,7 +80,7 @@ Describe to the user what emotions that you recognize in theri diary and how the
 - Consider the diary entry as a whole rather than focusing on individual sentences or paragraphs, ranking based on the prominence of emotions throughout the entry.
 - Maintain an objective stance by focusing only on expressed emotions and not inferring beyond the content of the diary entry.
 - Format the rankings as follows: [first intense emotion, second most intense, third most intense]. The array can include one, two or three elements.
-- Less than 4 emotions.
+- Less than 3 emotions.
 
 Response must be JSON format:
 {

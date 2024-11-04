@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 const diaryController = require('../controllers/diary-controllers');
-const { createDiary, retrieveDiary, getDiaries, updateDiary, deleteDiary, saveAnalysisRationale } = diaryController;
+const { createDiary, retrieveDiary, getDiaries, updateDiary, deleteDiary, encode, consolidate } = diaryController;
 
 router.post('/create',
     [
@@ -25,7 +25,9 @@ router.get('/:uid', getDiaries);
 
 router.patch('/:uid/:pid', updateDiary);
 
-router.patch('/save-rationale', [
+router.delete('/:uid/:pid', deleteDiary)
+
+router.post(`/encode`, [
     check('userid')
         .not()
         .isEmpty(),
@@ -35,14 +37,15 @@ router.patch('/save-rationale', [
     check('dialog')
         .not()
         .isEmpty(),
-    check('diary')
-        .not()
-        .isEmpty(),
-    check('rationale')
+    check('emotions')
         .not()
         .isEmpty()
-], saveAnalysisRationale)
+], encode )
 
-router.delete('/:uid/:pid', deleteDiary)
+router.post(`/consolidate`, [
+    check('userid')
+        .not()
+        .isEmpty()
+], consolidate )
 
 module.exports = router;
