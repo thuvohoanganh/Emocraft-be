@@ -9,10 +9,11 @@ const {
     generateDetectEmotion,
     generateFeedbackPhase,
     confirmEmotions,
+    generateAnalysis,
+    retrieveRelevantDiaryByContext
 } = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
-const { updateDiarySummary } = require('./diary-controllers');
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -61,7 +62,6 @@ const chatbotConversation = async (req, res, next) => {
         return next(_error);
     }
 
-    console.log("summary", summary)
     console.log("nextPhase", nextPhase)
 
     // generate response
@@ -72,7 +72,8 @@ const chatbotConversation = async (req, res, next) => {
         response.content = result.content
     } 
     else if (nextPhase === PHASE_LABEL.FULLFILL) {
-        const result = await confirmEmotions(diary, dialog, summary)
+        const result = await confirmEmotions(diary, summary)
+        // const result = retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog, summary)
         error = result.error
         response.phase = result.phase
         response.content = result.content
@@ -108,7 +109,7 @@ const chatbotConversation = async (req, res, next) => {
     //     updateDiarySummary(userid, diaryid, summary)
     // }
 
-    if (response.content[0] === "") {
+    if (response.content?.[0] === "") {
         response.content = response.content.replace(/^\"+|\"+$/gm,'')
     }
 

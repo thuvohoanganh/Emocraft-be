@@ -10,19 +10,38 @@ const DiarySchema = new mongoose.Schema({
         required: true
     },
     content: {
-        type: String
+        type: String,
+        required: true
     },
     emotions: {
-        type: String //stringify Object
-    },
-    context: {
-        type: String
+        type: [String]
     },
     dialog: {
         type: String //stringify the JSON dialog
     },
-    rationale: {
-        type: String
+    people: {
+        type: String,
+    },
+    location: {
+        type: String,
+    },
+    activity: {
+        type: String,
+    },
+    time_of_day: {
+        type: String,
+    },
+    frequency: {
+        type: Number,
+        default: 0
+    },
+    emotion_retention: {
+        type: Number,
+        default: 0
+    },
+    context_retention: {
+        type: Number,
+        default: 0
     },
     createdAt: {
         type: Date,

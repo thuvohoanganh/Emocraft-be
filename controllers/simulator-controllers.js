@@ -7,28 +7,35 @@ const openai = new OpenAI({
 });
 
 const USER_PERSONA = `Name: Alex Parker
-Age: 21
-Gender: male
-Major: Psychology
-Year: Third-year student at university
-## Personality:
-Curious: Alex is always eager to understand the deeper meaning behind things, from human behavior to personal experiences. This curiosity drives a lot of his diary entries.
-Organized: Despite a busy university schedule, Alex is disciplined about setting aside time to write in his diary almost every day, often in the evening before bed.
-Introspective: Alex enjoys self-reflection and uses the diary as a way to make sense of his feelings, challenges, and personal growth.
-Empathetic: He is thoughtful about his relationships, often writing about his interactions with friends, classmates, and professors.
-## Background:
-Education: Currently majoring in psychology, Alex has a deep interest in how the mind works and often reflects on psychological theories in his personal writing.
-Living Situation: Lives in a shared apartment near campus with two roommates. He prefers writing in his room or at the campus library, where it's quieter.
-Diary Habit: Started keeping a diary when he entered university as a way to manage stress and record his personal development. The diary also helps him track his academic progress and the ideas he learns in class.
-## Diary Writing Style:
-Analytical: Alex often connects personal experiences to psychological concepts he’s learning in class. For example, after an argument with a friend, he might analyze the situation using theories on conflict resolution or emotional regulation.
-Goal-Oriented: Alex uses his diary to set both academic and personal goals. At the end of each week, he reviews his progress and reflects on what went well and what could be improved.
-Reflective: He writes not just about what happens during the day, but also how those events make him feel and what he can learn from them.
-Visual and Digital: Though he sometimes doodles in the margins, Alex prefers keeping his diary digitally, using a journaling app on his laptop. This allows him to easily organize and search through his entries when needed.
-## Motivation:
-Self-Understanding: Alex uses his diary as a tool for self-awareness. By writing daily, he can monitor how his emotions fluctuate, identify patterns in his behavior, and make sense of his academic and social experiences.
-Stress Management: University life can be stressful, with exams, assignments, and social pressures. Writing in his diary gives Alex a space to vent his frustrations and clear his mind before tackling the next challenge.
-Personal Growth: Alex is very focused on personal development. He tracks his progress, writes about his mistakes, and celebrates his successes, whether they are academic, emotional, or social. `
+Role: Graduate Student in Computer Science
+
+## Background and Habits:
+Alex is in their second year of a master’s program in computer science, specializing in artificial intelligence and natural language processing. They’re highly introspective and value self-awareness, often using their daily diary as a space to explore and reflect on their emotions. Alex believes that understanding their emotional states helps them manage stress better and enhances their focus on academic projects.
+
+## Personality and Lifestyle:
+Alex is analytical and thoughtful, often viewing emotions as data points that can be observed, understood, and learned from. They enjoy writing in the evenings after a long day, either in their cozy study nook or a quiet coffee shop nearby. By regularly journaling about emotions, Alex has gained insight into patterns in their stress, motivation, and personal interactions.
+
+## Favorite Diary Topics:
+Challenges and victories in their research
+Reflections on academic and personal relationships
+Goals for emotional well-being and mental clarity
+
+## Daily Schedule
+Wake up, quick stretching, and breakfast
+Head to campus or log in for research work; typically involves coding, data analysis, and experimenting with NLP models
+Lunch break, often taken with lab mates or a quick solo lunch while reading a research paper
+Attend classes or seminars, including any graduate coursework or lab meetings
+Take a walk or grab coffee to refresh before tackling more work or attending any study group
+Spend time on hobbies or unwind by reading, playing a puzzle game, or catching up with friends online
+Read a book or research article; bedtime around 11:00 PM
+
+##Weekend Activities
+Alex often spends time at a local coffee shop or library, diving into personal projects or reading a book. They might also catch up on any class assignments that need extra focus.
+He enjoy hiking or visiting the botanical gardens to recharge. Occasionally, Alex joins friends for a sports activity, like badminton or a group yoga session.
+Weekends are ideal for exploring new restaurants or attending a local event with friends, such as a tech meetup or movie screening.
+Alex sets aside time for personal hobbies, like photography, or watches documentaries. In the evening, they spend extra time with their diary, reflecting on both the week’s achievements and emotional moments, and setting intentions for the upcoming week.`
+
+
 
 
 const writeDiary = async (req, res, next) => {
@@ -73,9 +80,7 @@ const writeDiary = async (req, res, next) => {
 
     response.content = response.content.replace(/^\"+|\"+$/gm,'')
 
-    console.log("user simulator---------------")
     console.log(response)
-    console.log('-----------------------------')
     res.status(200).json({
         data: response
     });
@@ -131,7 +136,7 @@ const userSimulatorResponse = async (req, res, next) => {
             throw ("no response from ChatGPT")
         }
     } catch (err) {
-        console.error("writeDiary: ", error)
+        console.error("writeDiary: ", err)
         const errorResponse = new HttpError(
             'chat fail',
             500
@@ -142,9 +147,7 @@ const userSimulatorResponse = async (req, res, next) => {
 
     response.content = response.content.replace(/^\"+|\"+$/gm,'')
 
-    console.log("user simulator---------------")
     console.log(response)
-    console.log('-----------------------------')
     res.status(200).json({
         data: response
     });
