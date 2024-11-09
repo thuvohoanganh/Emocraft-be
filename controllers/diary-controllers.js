@@ -251,22 +251,6 @@ const saveAnalysisRationale = async (req, res, next) => {
     });
 }
 
-const updateDiarySummary = async (userId, diaryid, summary) => {
-    if (!userId || !diaryid || !summary) return
-    let existingDiary;
-
-    try {
-        existingDiary = await Diary.findOne({ _id: diaryid, userid: userId });
-        if(existingDiary) {
-            existingDiary.context = JSON.stringify(summary);
-            await existingDiary.save();
-        }
-    } catch (err) {
-        console.error("updateDiarySummary: ", err)
-        return
-    }
-}
-
 const encode = async (req, res, next) => {
     const {userid, diaryid, dialog, emotions} = req.body
 
@@ -406,7 +390,7 @@ const encode = async (req, res, next) => {
 } 
 
 const consolidate = async (req, res, next) => {
-    console.log("consolidate-----------------")
+    // console.log("consolidate-----------------")
     const {userid} = req.body
     try {
         await checkUserExists(userid);
@@ -478,7 +462,7 @@ const consolidate = async (req, res, next) => {
             frequencyArray.push(diary.frequency)
             contextSaliencyArray.push(context_saliency)
             emotionSaliencyArray.push(emotionSaliency)
-            console.log(diary.location,locationSaliency, diary.people,peopleSaliency, diary.activity, activitySaliency, diary.time_of_day , timeOfDaySaliency, context_saliency, diary.emotions, emotionSaliency)
+            // console.log(diary.location,locationSaliency, diary.people,peopleSaliency, diary.activity, activitySaliency, diary.time_of_day , timeOfDaySaliency, context_saliency, diary.emotions, emotionSaliency)
         })
 
         let timeArrayMinmax = minmaxScaling(timeArray);
@@ -494,7 +478,7 @@ const consolidate = async (req, res, next) => {
             const contextRetention = f+contextSaliency > 0? Math.exp(-t/(f+contextSaliency)) : 0;
             const emotionRetention = f+emotionSaliency >0 ? Math.exp(-t/(f+emotionSaliency)) : 0;
 
-            console.log("contextRetention", contextRetention, t, f, contextSaliency)
+            // console.log("contextRetention", contextRetention, t, f, contextSaliency)
             diary.context_retention = contextRetention
             diary.emotion_retention = emotionRetention
 
@@ -518,7 +502,6 @@ module.exports = {
     getDiaries,
     updateDiary,
     deleteDiary,
-    updateDiarySummary,
     saveAnalysisRationale,
     encode,
     consolidate,

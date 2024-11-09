@@ -24,7 +24,6 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
             "event": "",
             "location": "",
             "people": "",
-            "emotions": null,
             "time_of_day": "",
             "skip": false,
             "rationale": ''
@@ -35,12 +34,6 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     const instruction = `- You are a helpful assistant that analyzes the content of the dialog history.
 - Given a dialogue history and user's diary, determine whether user mentioned location and people that are involed in the key episode or not.
 - Use JSON format with the following properties:
- ## emotions
- Find emotions in this list: ${EMOTION_LIST}. 
- Please do not provide any other labels outside of this list.
- If user express emotions out of emotion list, find and replace with the most similar one in emotion list. 
- Array starts with the strongest and listing them in descending order.
- Return 2 or 1 strongest emotions in the array.
  ## event: the key event that causes user's emotion.
  ## location: where did user usually have that emotions (e.g. home, office, school). Only extract text written by user, do not predict.
  ## people: who did cause those emotions (e.g. alone, friend family). Only extract text written by user, do not predict.
@@ -52,7 +45,6 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
             "event": string | null,
             "location": string | null,
             "people": string | null,
-            "emotions": [string] | null,
             "time_of_day": string | null,
             "skip": boolean,
             "rationale": string,
@@ -64,20 +56,14 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     try {
         const res = JSON.parse(_res)
         if (res.summary.event && res.summary.location && res.summary.people && res.summary.time_of_day) {
-            if (res.summary.emotions) {
-                response.next_phase = PHASE_LABEL.FULLFILL
-            } else {
-                response.next_phase = PHASE_LABEL.MISSING_EMOTION
-            }
+            response.next_phase = PHASE_LABEL.FULLFILL
         }
-        else if (res.summary.emotions && !(res.summary.event || res.summary.location || res.summary.people || res.summary.time_of_day)) {
-            response.next_phase = PHASE_LABEL.MISSING_CONTEXT
-        } else {
+        else if (res.summary.skip) {
+            response.next_phase = PHASE_LABEL.FULLFILL
+        }
+        else {
             response.next_phase = PHASE_LABEL.BEGINNING
         }
-        // else if (res.summary.skip) {
-        //     response.next_phase = PHASE_LABEL.DETECT
-        // }
         response.summary = res.summary
     } catch {
         if (!_res) {
@@ -126,59 +112,23 @@ const askMissingInfor = async (diary, dialog, summary) => {
     return response
 }
 
-const generateDetectEmotion = async (diary, dialog) => {
-
-    const task_instruction = instruction_32_emotion
-
-    const response = {
-        error: "",
-        phase: PHASE_LABEL.MISSING_EMOTION,
-        content: "",
-        analysis: null,
-        rationale: ""
-    }
-    const _res = await generateResponse(diary, dialog, task_instruction)
-
-
-    try {
-        const res = JSON.parse(_res)
-        if (res.content && res.analysis) {
-            response.content = res.content.replace(/^\"+|\"+$/gm, '')
-            response.analysis = res.analysis
-        } else {
-            throw ("error: wrong response format function generateResponse")
-        }
-    } catch {
-        if (!_res) {
-            response.error = "ChatGPT failed"
-        } else {
-            console.error(_res)
-            response.content = _res
-        }
-    }
-
-    response.content = response.content.replace(/^\"+|\"+$/gm, '')
-
-    console.log("Response: ", response);
-    return response
-}
-
-const confirmEmotions = async (diary, summary) => {
+const confirmEmotions = async (diary, dialog) => {
     const task_instruction = ` 
-input array: ${JSON.stringify(summary.emotions)}
-emotion list: ${EMOTION_LIST}.
 Return the response in JSON format, structured as follows:
-### Analysis
-Check each value in the input array. If the value in the input list is not included in the emotion list, try to replace it with the most similar meaning in the emotion list. If it is the same, remain it. The output array have to have the same lenght with input array.
-Check again and make sure that analysis only includes values in emotion list. 
+### emotions
+Consider the diary to assign 2 or 1 emotion labels. Only from this emotion list: ${EMOTION_LIST}. Only return the assigned words.
+Please don't provide any other labels outside of this list.
+Array starts with the strongest and listing them in descending order.
+Return 2 or 1 strongest emotions in the array.
+Check again and make sure that emotions property only includes values in emotion list. 
 ### rationale
-reason how you generate analysis properties. The emotions you put in analysis are included in emotion list or not. 
+Answer that the emotions you put in emotion property are included in emotion list or not. Reason how you generate emotions property.  
 ### content
-Explain to user why you think user have emotions that listed in the analysis property. Your response to user should be as second person pronoun "YOU". Your response should be shorter than 50 words.
+Explain to user why you think user have emotions that listed in the analysis property. Your response to user should be as second person pronoun "you". Your response should be shorter than 50 words.
 
 Response must be JSON format:
 {
-    "analysis": [string],
+    "emotions": [string],
     "rationale": string,
     "content": string
 }
@@ -196,7 +146,7 @@ Response must be JSON format:
 
     try {
         const res = JSON.parse(_res)
-        response.analysis = res.analysis
+        response.analysis = res.emotions
         response.content = res.content
         console.log("confirmEmotions", res)
     } catch {
@@ -272,7 +222,7 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
 }
 
 const generateFeedbackPhase = async (diary, dialog) => {
-    const instruction = `You are a psychologist. you are good at emotion awareness and you can understand where human emotion come from based on user's diary.
+    const instruction = `
     - Given a dialogue history and user's diary, do they agree or disagree with what you told them?
     - If user are satisfied with the analysis, say thank and tell them to click Finish button on the top screen to finish section.
     - If user give feedback to you, try to make analysis again based on diary and their feedback.
@@ -307,14 +257,13 @@ const generateFeedbackPhase = async (diary, dialog) => {
 
     try {
         const res = JSON.parse(_res)
-        console.log("generateFeedbackPhase", instruction)
         console.log("generateFeedbackPhase", res)
         if (res.content) {
             response.content = res.content.replace(/^\"+|\"+$/gm, '')
             response.analysis = res.analysis
             response.rationale = res.rationale
         } else {
-            response.content = _res
+            response.content = _res?.replace(/^\"+|\"+$/gm, '')
         }
     } catch {
         if (typeof _res === "string") {
@@ -443,7 +392,6 @@ Use JSON format with the following properties:
 module.exports = {
     checkCriteriaExplorePhase,
     askMissingInfor,
-    generateDetectEmotion,
     generateFeedbackPhase,
     generateResponse,
     generateRationaleSummary,

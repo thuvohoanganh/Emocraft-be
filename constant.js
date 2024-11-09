@@ -1,4 +1,5 @@
-const EMOTION_LIST = "calm, joy, anxiety, fear, surprise, sadness, tiredness, disgust, anger, overwhelmed, interest";
+// const EMOTION_LIST = "calm, joy, anxiety, fear, surprise, sadness, tiredness, disgust, anger, overwhelmed, interest";
+const EMOTION_LIST = "calm, joy, delight, acceptance, trust, admiration, anxiety, fear, terror, distraction, surprise, amazement, unhappyness, sadness, heartbroken, tiredness, disgust, horror, annoyance, anger, overwhelmed, interest, anticipation, focus, love, submission, shock, disapproval, guilt, contempt, aggressiveness, optimism";
 const EMOTION_LABEL = {
     SERENITY: "calm",
     JOY: "joy",

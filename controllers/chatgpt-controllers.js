@@ -6,7 +6,6 @@ const Summary = require('../models/summary');
 const {
     checkCriteriaExplorePhase,
     askMissingInfor,
-    generateDetectEmotion,
     generateFeedbackPhase,
     confirmEmotions,
     generateAnalysis,
@@ -29,7 +28,7 @@ const chatbotConversation = async (req, res, next) => {
         );
     }
 
-    const {userid, diaryid, diary, dialog, phase: currentPhase } = req.body
+    const {userid, diaryid, diary, dialog, phase: currentPhase, analysis } = req.body
     let response = {
         phase: "",
         content: "",
@@ -39,15 +38,12 @@ const chatbotConversation = async (req, res, next) => {
     let nextPhase = currentPhase
     let summary = null
 
-    // Check criteria in current phase
+    /* START: Check criteria in current phase */
     if (currentPhase === PHASE_LABEL.BEGINNING) {
         const result = await checkCriteriaExplorePhase(diary, dialog)
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
-    } 
-    else if (currentPhase === PHASE_LABEL.MISSING_EMOTION) {
-        nextPhase = PHASE_LABEL.FEEDBACK
     } 
     else if (currentPhase === PHASE_LABEL.FULLFILL) {
         nextPhase = PHASE_LABEL.FEEDBACK
@@ -61,10 +57,11 @@ const chatbotConversation = async (req, res, next) => {
         );
         return next(_error);
     }
+    /* END: Check criteria in current phase */
 
     console.log("nextPhase", nextPhase)
 
-    // generate response
+    /* START: Generate response */
     if (nextPhase === PHASE_LABEL.BEGINNING) {
         const result = await askMissingInfor(diary, dialog, summary)
         error = result.error
@@ -72,30 +69,22 @@ const chatbotConversation = async (req, res, next) => {
         response.content = result.content
     } 
     else if (nextPhase === PHASE_LABEL.FULLFILL) {
-        const result = await confirmEmotions(diary, summary)
+        const result = await confirmEmotions(diary, dialog)
         // const result = retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog, summary)
         error = result.error
         response.phase = result.phase
         response.content = result.content
         response.analysis = result.analysis
     } 
-    else if (nextPhase === PHASE_LABEL.MISSING_CONTEXT) {
-        response.content = PHASE_LABEL.MISSING_CONTEXT
-    } 
-    else if (nextPhase === PHASE_LABEL.MISSING_EMOTION) {
-        const result = await generateDetectEmotion(diary, dialog)
-        error = result.error
-        response.phase = result.phase
-        response.content = result.content
-        response.analysis = result.analysis
-    } 
     else if (nextPhase === PHASE_LABEL.FEEDBACK) {
-        const result = await generateFeedbackPhase(diary, dialog)
+        const result = await generateFeedbackPhase(diary, dialog, analysis)
         error = result.error
         response.phase = result.phase
         response.content = result.content
         response.analysis = result.analysis
     }
+    /* START: generate response */
+
     if (!!error) {
         console.error("chatbotConversation error: ", error)
         const errorResponse = new HttpError(
@@ -104,10 +93,6 @@ const chatbotConversation = async (req, res, next) => {
         );
         return next(errorResponse);
     }
-
-    // if (currentPhase === PHASE_LABEL.EXPLORE && nextPhase === PHASE_LABEL.DETECT) {
-    //     updateDiarySummary(userid, diaryid, summary)
-    // }
 
     if (response.content?.[0] === "") {
         response.content = response.content.replace(/^\"+|\"+$/gm,'')
