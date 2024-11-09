@@ -59,6 +59,7 @@ app.use((error, req, res, next) => {
 
 mongoose
   .connect(`mongodb://${process.env.MONGODB_ICLAB_USERNAME}:${encodeURIComponent(process.env.MONGODB_ICLAB_PASSWORD)}@deploy.iclab.dev:6000/abc`)
+  // .connect(`mongodb+srv://thuvohoanganh96:xanhduong@cluster0.ibdzx.mongodb.net/emotional_diary?retryWrites=true&w=majority`)
   .then(() => {
     app.listen(process.env.PORT || 8000);
   })
