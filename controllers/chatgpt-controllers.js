@@ -69,15 +69,15 @@ const chatbotConversation = async (req, res, next) => {
         response.content = result.content
     } 
     else if (nextPhase === PHASE_LABEL.FULLFILL) {
-        const result = await confirmEmotions(diary, dialog)
-        // const result = retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog, summary)
+        const result = await confirmEmotions(diary, userid)
+        retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content
         response.analysis = result.analysis
     } 
     else if (nextPhase === PHASE_LABEL.FEEDBACK) {
-        const result = await generateFeedbackPhase(diary, dialog, analysis)
+        const result = await generateFeedbackPhase(diary, dialog, userid)
         error = result.error
         response.phase = result.phase
         response.content = result.content

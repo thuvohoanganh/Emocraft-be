@@ -283,24 +283,12 @@ const encode = async (req, res, next) => {
         return next(error);
     }
 
-    const existingCategories = {}
     try {
-        const location = await Statistic.distinct( "subcategory", { category: "location" } )
-        const people = await Statistic.distinct( "subcategory", { category: "people" } )
-        const activity = await Statistic.distinct( "subcategory", { category: "activity" } )
-
-        existingCategories["location"] = location
-        existingCategories["people"] = people
-        existingCategories["activity"] = activity
-    } catch(err) {
-        console.error("encode", "existingCategories", err)
-    }
-    try {
-        const context = await categorizeContext(existingDiary.content, dialog, existingCategories)
+        const context = await categorizeContext(existingDiary.content, dialog, userid)
 
         if (context.location) {
             existingDiary.location = context.location 
-            const contextFactor = await Statistic.findOne({ category: "location", subcategory: context.location });
+            const contextFactor = await Statistic.findOne({ category: "location", subcategory: context.location, userid });
             if (contextFactor) {
                 contextFactor.quantity += 1;
                 contextFactor.save();
@@ -308,6 +296,7 @@ const encode = async (req, res, next) => {
                 const newSubcategory = new Statistic({
                     category: "location",
                     subcategory: context.location,
+                    userid: userid,
                     quantity: 1,
                 });
                 newSubcategory.save();
@@ -315,7 +304,7 @@ const encode = async (req, res, next) => {
         }
         if (context.people) { 
             existingDiary.people = context.people 
-            const contextFactor = await Statistic.findOne({ category: "people", subcategory: context.people });
+            const contextFactor = await Statistic.findOne({ category: "people", subcategory: context.people, userid });
             if (contextFactor) {
                 contextFactor.quantity += 1;
                 contextFactor.save();
@@ -323,6 +312,7 @@ const encode = async (req, res, next) => {
                 const newSubcategory = new Statistic({
                     category: "people",
                     subcategory: context.people,
+                    userid: userid,
                     quantity: 1,
                 });
                 newSubcategory.save();
@@ -330,7 +320,7 @@ const encode = async (req, res, next) => {
         }
         if (context.activity) { 
             existingDiary.activity = context.activity 
-            const contextFactor = await Statistic.findOne({ category: "activity", subcategory: context.activity });
+            const contextFactor = await Statistic.findOne({ category: "activity", subcategory: context.activity, userid: userid });
             if (contextFactor) {
                 contextFactor.quantity += 1;
                 contextFactor.save();
@@ -338,6 +328,7 @@ const encode = async (req, res, next) => {
                 const newSubcategory = new Statistic({
                     category: "activity",
                     subcategory: context.activity,
+                    userid: userid,
                     quantity: 1,
                 });
                 newSubcategory.save();
@@ -345,7 +336,7 @@ const encode = async (req, res, next) => {
         }
         if (context.time_of_day) { 
             existingDiary.time_of_day = context.time_of_day 
-            const contextFactor = await Statistic.findOne({ category: "time_of_day", subcategory: context.time_of_day });
+            const contextFactor = await Statistic.findOne({ category: "time_of_day", subcategory: context.time_of_day, userid });
             if (contextFactor) {
                 contextFactor.quantity += 1;
                 contextFactor.save();
@@ -353,6 +344,7 @@ const encode = async (req, res, next) => {
                 const newSubcategory = new Statistic({
                     category: "time_of_day",
                     subcategory: context.time_of_day,
+                    userid: userid,
                     quantity: 1,
                 });
                 newSubcategory.save();
@@ -360,7 +352,7 @@ const encode = async (req, res, next) => {
         }
         if (emotions?.length > 0) {
             emotions.forEach(async (e) => {
-                const contextFactor = await Statistic.findOne({ category: "emotion", subcategory: e });
+                const contextFactor = await Statistic.findOne({ category: "emotion", subcategory: e, userid });
                 if (contextFactor) {
                     contextFactor.quantity += 1;
                     contextFactor.save();
@@ -368,6 +360,7 @@ const encode = async (req, res, next) => {
                     const newSubcategory = new Statistic({
                         category: "emotion",
                         subcategory: e,
+                        userid: userid,
                         quantity: 1,
                     });
                     newSubcategory.save();
@@ -416,7 +409,8 @@ const consolidate = async (req, res, next) => {
         const categories = await Statistic.find({
             category: {
                 $in: ["location", "people", "time_of_day", "activity", "emotion"]
-            }
+            },
+            userid: userid,
         })
         categories.forEach(e => {
             if (statistic[e.category]) {

@@ -1,6 +1,7 @@
 const OpenAI = require("openai")
 const HttpError = require('../models/http-error');
 const { validationResult } = require('express-validator');
+const Diary = require('../models/diary');
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -39,17 +40,28 @@ Alex sets aside time for personal hobbies, like photography, or watches document
 
 
 const writeDiary = async (req, res, next) => {
+    const { userid } = req.body
     const response = {
         content: ""
     }
+
+    const existingDiary = await Diary.find({ userid });
+    // console.log("existingDiary", existingDiary)
+    const existingDiaryContent = existingDiary? existingDiary.map(e => e.content) : []
 
     const instruction = `${USER_PERSONA}
     - Now you are writing your diary of the day.
     - Write about only 1 episode. 
     - Diary should less than 50 words. 
     - Don't write the date.
-    - Use simple words but natural language. Don't list activities.`
+    - Use simple words but natural language. Don't list activities.
+    
+    ${existingDiary.length > 0 ? 
+        `These are you previous diaries: ${JSON.stringify(existingDiaryContent)}`
+    : ""}
+    `
 
+    console.log("writeDiary", instruction)
     const messages = [
         {
             role: "system",

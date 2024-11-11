@@ -13,6 +13,10 @@ router.post('/response', [
         .isEmpty(),
 ], userSimulatorResponse);
 
-router.get('/write-diary', writeDiary);
+router.post('/write-diary', [
+    check('userid')
+        .not()
+        .isEmpty()
+], writeDiary);
 
 module.exports = router;

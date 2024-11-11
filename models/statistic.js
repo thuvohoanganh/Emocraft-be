@@ -13,7 +13,11 @@ const StatisticSchema = new mongoose.Schema({
     quantity: {
         type: Number,
         required: true
-    }
+    },
+    userid: {
+        type: String,
+        required: true
+    },
 })
 
 module.exports = mongoose.model('Statistic', StatisticSchema);

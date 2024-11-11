@@ -50,7 +50,6 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
             "rationale": string,
         }
     }`
-    console.log("checkCriteriaExplorePhase", instruction)
 
     const _res = await generateAnalysis(diary, dialog, instruction)
     try {
@@ -76,7 +75,7 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
         }
     }
 
-    console.log("checkCriteriaExplorePhase", response)
+    // console.log("checkCriteriaExplorePhase", response)
     return response
 }
 
@@ -112,11 +111,12 @@ const askMissingInfor = async (diary, dialog, summary) => {
     return response
 }
 
-const confirmEmotions = async (diary, dialog) => {
+const confirmEmotions = async (diary, userid) => {
+    const emotionList = await getEmotionList(userid)
     const task_instruction = ` 
 Return the response in JSON format, structured as follows:
 ### emotions
-Consider the diary to assign 2 or 1 emotion labels. Only from this emotion list: ${EMOTION_LIST}. Only return the assigned words.
+Consider the diary to assign 2 or 1 emotion labels. Only from this emotion list: ${emotionList}. Only return the assigned words.
 Please don't provide any other labels outside of this list.
 Array starts with the strongest and listing them in descending order.
 Return 2 or 1 strongest emotions in the array.
@@ -133,7 +133,6 @@ Response must be JSON format:
     "content": string
 }
     `
-    console.log("confirmEmotions", task_instruction)
     const response = {
         error: "",
         phase: PHASE_LABEL.FULLFILL,
@@ -160,7 +159,6 @@ Response must be JSON format:
 }
 
 const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) => {
-    console.log("retrieveRelevantDiaryByContext")
     const response = {
         error: "",
         phase: PHASE_LABEL.FULLFILL,
@@ -169,21 +167,10 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
         rationale: ""
     }
 
-    const existingCategories = {}
     try {
-        const location = await Statistic.distinct( "subcategory", { category: "location" } )
-        const people = await Statistic.distinct( "subcategory", { category: "people" } )
-        const activity = await Statistic.distinct( "subcategory", { category: "activity" } )
+        const context = await categorizeContext(diary, dialog)
 
-        existingCategories["location"] = location
-        existingCategories["people"] = people
-        existingCategories["activity"] = activity
-    } catch(err) {
-        console.error("retrieveRelevantDiaryByContext", "existingCategories", err)
-    }
-
-    try {
-        const context = await categorizeContext(diary, dialog, existingCategories)
+        console.log("retrieveRelevantDiaryByContext", context)
 
         diaries = await Diary.find({ userid: userid, _id : { $ne: diaryid } });
         console.log("diaryid", diaryid)
@@ -206,13 +193,15 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
         diaries.forEach((diary, index) => {
             sortedDiaries.push({
                 diary_id: diary._id,
-                score: similarityScoresScale[index] + diary.context_retention
+                score: similarityScoresScale[index] + diary.context_retention,
+                similarity: similarityScoresScale[index],
+                retention: diary.context_retention,
+                content: diary.content
             })       
         })
         sortedDiaries.sort((a,b) => b.score - a.score)
         console.log("sortedDiaries", sortedDiaries)
         const topThree = diaries.filter(e => e._id === sortedDiaries[0].diary_id || e._id === sortedDiaries[1].diary_id || e._id === sortedDiaries[2].diary_id)
-        console.log("topThree", topThree)
     } catch (err) {
         err && console.error(err);
         response.error = err
@@ -221,16 +210,16 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
     return response
 }
 
-const generateFeedbackPhase = async (diary, dialog) => {
+const generateFeedbackPhase = async (diary, dialog, userid) => {
+    const emotionList = await getEmotionList(userid)
     const instruction = `
     - Given a dialogue history and user's diary, do they agree or disagree with what you told them?
     - If user are satisfied with the analysis, say thank and tell them to click Finish button on the top screen to finish section.
     - If user give feedback to you, try to make analysis again based on diary and their feedback.
     - Use JSON format with the following properties:
-    - Emotion list: ${EMOTION_LIST}.
+    - Emotion list: ${emotionList}.
     ## analysis
-    Based on diary, detect which emotions of emotion list in the diary entry according to their intensity, starting with the strongest and listing them in descending order. Make sure to consider only emotions in emotion list. Do not repeat emotion. Format the analysis as follows: [first intense emotion, second most intense]. length of array must be less than 4. If user was satisfied with the previous analysis, return null.
-    Only use emotions list. If user told you emotion label out of provided emotion list, find the most similar emotion in emotion list and explain to user in the content property.
+    Based on diary and dialog, detect which emotions of emotion list in the diary entry according to their intensity, starting with the strongest and listing them in descending order. Do not repeat emotion. Format the analysis as follows: [first intense emotion, second most intense]. length of array must be less than 4. If user was satisfied with the previous analysis, return null.
     ## content
     Your response to user as second person pronoun "you". 
     Don't use third person pronoun. 
@@ -257,7 +246,7 @@ const generateFeedbackPhase = async (diary, dialog) => {
 
     try {
         const res = JSON.parse(_res)
-        console.log("generateFeedbackPhase", res)
+        // console.log("generateFeedbackPhase", res)
         if (res.content) {
             response.content = res.content.replace(/^\"+|\"+$/gm, '')
             response.analysis = res.analysis
@@ -352,14 +341,28 @@ const generateRationaleSummary = async (diary, dialog, initRationale) => {
     return updatedRationale
 }
 
-const categorizeContext = async (diary, dialog, existingCategory) => {
+const categorizeContext = async (diary, dialog, userid) => {
     const response = {
         activity: "",
         location: "",
         people: "",
         time_of_day: "",
     }
-    const { activity, location, people } = existingCategory
+
+    const existingCategories = {}
+    try {
+        const location = await Statistic.distinct( "subcategory", { category: "location", userid } )
+        const people = await Statistic.distinct( "subcategory", { category: "people", userid } )
+        const activity = await Statistic.distinct( "subcategory", { category: "activity", userid } )
+
+        existingCategories["location"] = location
+        existingCategories["people"] = people
+        existingCategories["activity"] = activity
+    } catch(err) {
+        console.error(err)
+    }
+
+    const { activity, location, people } = existingCategories
     const instruction = `Based on diary and dialog, classify contextual information into category.
 Use JSON format with the following properties:
 - activity: detect key activity in the diary and return the category that it belong to. Consider these category: ${activity || ""}, studying, research, resting, meeting, eating, socializing, leisure activity, exercise, moving. If it doesn't belong to any of those, generate suitable category label. Don't return "other".
@@ -387,6 +390,13 @@ Use JSON format with the following properties:
     }
 
     return response
+}
+
+const getEmotionList = async (userid) => {
+    const emotions = await Statistic.distinct( "subcategory", { category: "emotion", userid: userid } )    
+    const presetEmotions = [...EMOTION_LIST.split(", ")]
+    const mergeList = presetEmotions.concat(emotions)
+    return [...new Set(mergeList)];
 }
 
 module.exports = {
