@@ -61,7 +61,7 @@ const writeDiary = async (req, res, next) => {
     : ""}
     `
 
-    console.log("writeDiary", instruction)
+    // console.log("writeDiary", instruction)
     const messages = [
         {
             role: "system",
@@ -92,7 +92,7 @@ const writeDiary = async (req, res, next) => {
 
     response.content = response.content.replace(/^\"+|\"+$/gm,'')
 
-    console.log(response)
+    // console.log(response)
     res.status(200).json({
         data: response
     });
