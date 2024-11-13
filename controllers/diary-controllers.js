@@ -154,7 +154,6 @@ const updateDiary = async (req, res, next) => {
         if (content !== undefined) existingDiary.content = content;
         if (emotions !== undefined) existingDiary.emotions = JSON.stringify(emotions);
         if (dialog !== undefined) existingDiary.dialog = JSON.stringify(dialog);
-        if (context !== undefined) existingDiary.context = JSON.stringify(context);
         if (timestamp !== undefined) existingDiary.timestamp = timestamp;
 
         existingDiary.createdAt = new Date();
