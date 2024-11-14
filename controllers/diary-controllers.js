@@ -203,54 +203,6 @@ const deleteDiary = async (req, res, next) => {
     res.status(200).json({ message: 'Diary deleted', postId: existingDiary.id });
 }
 
-const saveAnalysisRationale = async (req, res, next) => {
-    const errors = validationResult(req);
-
-    if (!errors.isEmpty()) {
-        console.error("saveAnalysisRationale:", errors)
-        return next(
-            new HttpError(JSON.stringify(errors), 422)
-        );
-    }
-
-    const {userid, diaryid, diary, dialog, rationale } = req.body
-    let response = ""
-
-    try {
-        response = await generateRationaleSummary(diary, dialog, rationale)
-        if (!response) {
-            throw("response empty")
-        }
-    } catch(err) {
-        console.error("saveAnalysisRationale:", err)
-        const errorResponse = new HttpError(
-            'chat fail',
-            500
-        );
-        return next(errorResponse);
-    }
-    
-
-    try {
-        const existingDiary = await Diary.findOne({ _id: diaryid, userid: userid });
-        if(existingDiary) {
-            existingDiary.rationale = response
-            await existingDiary.save();
-        }
-    } catch (err) {
-        console.error("saveAnalysisRationale")
-        const errorResponse = new HttpError(
-            'chat fail',
-            500
-        );
-        return next(errorResponse);
-    }
-
-    res.status(200).json({
-        data: response
-    });
-}
-
 const encode = async (req, res, next) => {
     const {userid, diaryid, dialog, emotions} = req.body
 
@@ -496,7 +448,6 @@ module.exports = {
     getDiaries,
     updateDiary,
     deleteDiary,
-    saveAnalysisRationale,
     encode,
     consolidate,
 };
