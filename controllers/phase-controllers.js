@@ -159,13 +159,7 @@ Response must be JSON format:
 }
 
 const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) => {
-    const response = {
-        error: "",
-        phase: PHASE_LABEL.FULLFILL,
-        content: "",
-        analysis: null,
-        rationale: ""
-    }
+    let results = []
 
     try {
         const context = await categorizeContext(diary, dialog)
@@ -175,39 +169,45 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
         diaries = await Diary.find({ userid: userid, _id : { $ne: diaryid } });
         console.log("diaryid", diaryid)
         if (!diaries) {
-            return response
+            return results
         } 
 
-        const similarityScores = []
+        const contextRelevantDiary = []
         diaries.forEach(diary => {
             let similarityScore = 0 
-            if (diary.location === context.location) similarityScore += 1;
-            if (diary.people === context.people) similarityScore += 1;
-            if (diary.activity === context.activity) similarityScore += 1;  
-            if (diary.time_of_day === context.time_of_day) similarityScore += 1;   
-            similarityScores.push(similarityScore)         
+            if (diary.activity === context.activity) similarityScore += 0.4;
+            if (diary.location === context.location) similarityScore += 0.25;
+            if (diary.people === context.people) similarityScore += 0.25;  
+            if (diary.time_of_day === context.time_of_day) similarityScore += 0.1;
+            
+            if (similarityScore >= 0.5) {
+                contextRelevantDiary.push({
+                    content: diary.content,
+                    similarity: similarityScore,
+                    emotion_retention: diary.emotion_retention,
+                    context_retention: diary.context_retention,
+                    activity: diary.activity,
+                    location: diary.location,
+                    people: diary.people,
+                    time_of_day: diary.time_of_day,
+                    emotions: diary.emotions
+                })
+            }
         })
+        console.log("contextRelevantDiary", contextRelevantDiary)
 
-        const similarityScoresScale = minmaxScaling(similarityScores)
-        const sortedDiaries = []
-        diaries.forEach((diary, index) => {
-            sortedDiaries.push({
-                diary_id: diary._id,
-                score: similarityScoresScale[index] + diary.context_retention,
-                similarity: similarityScoresScale[index],
-                retention: diary.context_retention,
-                content: diary.content
-            })       
-        })
-        sortedDiaries.sort((a,b) => b.score - a.score)
-        console.log("sortedDiaries", sortedDiaries)
-        const topThree = diaries.filter(e => e._id === sortedDiaries[0].diary_id || e._id === sortedDiaries[1].diary_id || e._id === sortedDiaries[2].diary_id)
+        let topThree = []
+        if (contextRelevantDiary.length > 0) {
+            contextRelevantDiary.sort((a,b) => (b.context_retention + b.similarity) - (a.context_retention + b.similarity))
+            topThree = contextRelevantDiary.slice(0,3)
+        }
+        console.log("topThree", topThree)
+        results = topThree
     } catch (err) {
         err && console.error(err);
-        response.error = err
-        return response
+        return results
     }
-    return response
+    return results
 }
 
 const generateFeedbackPhase = async (diary, dialog, userid) => {
@@ -371,9 +371,9 @@ const categorizeContext = async (diary, dialog, userid) => {
     const { activity, location, people } = existingCategories
     const instruction = `Based on diary and dialog, classify contextual information into category.
 Use JSON format with the following properties:
-- activity: detect key activity in the diary and return the category that it belong to. Consider these category: ${activity || ""}, studying, research, resting, meeting, eating, socializing, leisure activity, exercise, moving. If it doesn't belong to any of those, generate suitable category label. Don't return "other".
-- location: detect where did user usually have that emotions and return the category that it belong to. Consider these category: ${location || ""}, home, classroom, library, restaurant, office, laboratory. If it doesn't belong to any of those, generate suitable category label. Don't return "other".
-- people: detect who did cause those emotions and return the category that it belong to. Consider these category: ${people || ""}, alone, family, boyfriend, girlfriend, roommate, friend, colleague, professor. If it doesn't belong to any of those, generate suitable category label. Don't return "other".
+- activity: detect key activity in the diary and return the category that it belong to. Consider these category: ${activity || ""}, studying, research, resting, meeting, eating, socializing, leisure activity, exercise, moving. If it doesn't belong to any of those, generate suitable category label. Return only one main activity. Don't return "other".
+- location: detect where did user usually have that emotions and return the category that it belong to. Consider these category: ${location || ""}, home, classroom, library, restaurant, office, laboratory. If it doesn't belong to any of those, generate suitable category label. Return only one location label relate to activity. Don't return "other".
+- people: detect who did cause those emotions and return the category that it belong to. Consider these category: ${people || ""}, alone, family, boyfriend, girlfriend, roommate, friend, colleague, professor. If it doesn't belong to any of those, generate suitable category label. Return only one people label relate to activity. Don't return "other".
 - time_of_day: what time of day did event happen. Only use one of the following: morning, noon, afternoon, evening, night, all_day. Return only one word.
 - rationale: Describe your rationale on how properties were derived.
     {

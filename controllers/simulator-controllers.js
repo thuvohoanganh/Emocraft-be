@@ -159,7 +159,6 @@ const userSimulatorResponse = async (req, res, next) => {
 
     response.content = response.content.replace(/^\"+|\"+$/gm,'')
 
-    console.log(response)
     res.status(200).json({
         data: response
     });
