@@ -30,7 +30,7 @@ Take a walk or grab coffee to refresh before tackling more work or attending any
 Spend time on hobbies or unwind by reading, playing a puzzle game, or catching up with friends online
 Read a book or research article; bedtime around 11:00 PM
 
-##Weekend Activities
+## Weekend Activities
 Alex often spends time at a local coffee shop or library, diving into personal projects or reading a book. They might also catch up on any class assignments that need extra focus.
 He enjoy hiking or visiting the botanical gardens to recharge. Occasionally, Alex joins friends for a sports activity, like badminton or a group yoga session.
 Weekends are ideal for exploring new restaurants or attending a local event with friends, such as a tech meetup or movie screening.
@@ -57,7 +57,7 @@ const writeDiary = async (req, res, next) => {
     - Use simple words but natural language. Don't list activities.
     
     ${existingDiary.length > 0 ? 
-        `These are you previous diaries: ${JSON.stringify(existingDiaryContent)}`
+        `These are your previous diaries: ${JSON.stringify(existingDiaryContent)}`
     : ""}
     `
 
