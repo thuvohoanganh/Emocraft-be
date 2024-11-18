@@ -1,7 +1,7 @@
 const OpenAI = require("openai")
 const dotenv = require("dotenv")
 const { EMOTION_LIST } = require("../constant");
-const { PHASE_LABEL, instruction_32_emotion } = require('../constant')
+const { PHASE_LABEL } = require('../constant')
 const Diary = require('../models/diary');
 const Statistic = require('../models/statistic');
 const { minmaxScaling } = require('../utils');
@@ -57,9 +57,9 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
         if (res.summary.event && res.summary.location && res.summary.people && res.summary.time_of_day) {
             response.next_phase = PHASE_LABEL.FULLFILL
         }
-        else if (res.summary.skip) {
-            response.next_phase = PHASE_LABEL.FULLFILL
-        }
+        // else if (res.summary.skip) {
+        //     response.next_phase = PHASE_LABEL.FULLFILL
+        // }
         else {
             response.next_phase = PHASE_LABEL.BEGINNING
         }
@@ -116,7 +116,9 @@ const confirmEmotions = async (diary, userid) => {
     const task_instruction = ` 
 Return the response in JSON format, structured as follows:
 ### emotions
-Recorgize emotions in the diary to assign 2 or 1 emotion labels. Consider emotion in this list: ${emotionList}.
+Recorgize emotions in the diary to assign 2 or 1 emotion labels. 
+Consider emotion in this list: ${emotionList}. Don't include any emotion outside of the list.
+Find the most similar emotion in the list to describe emotions in diary.
 Array starts with the strongest and listing them in descending order.
 Return 2 or 1 strongest emotions in the array.
 Check again and make sure that emotions property only includes values in emotion list. 
@@ -217,7 +219,13 @@ const generateFeedbackPhase = async (diary, dialog, userid) => {
     - Use JSON format with the following properties:
     - Emotion list: ${emotionList}.
     ## analysis
-    Based on diary and dialog, detect which emotions of emotion list in the diary entry according to their intensity, starting with the strongest and listing them in descending order. Do not repeat emotion. Format the analysis as follows: [first intense emotion, second most intense]. length of array must be less than 4. If user was satisfied with the previous analysis, return null.
+    Based on diary and dialog, detect which emotions of emotion list in the diary entry according to their intensity, starting with the strongest and listing them in descending order.
+    Don't include any emotion outside of the list.
+    Find the most similar emotion in the list to describe emotions in diary.
+    Do not repeat emotion. 
+    Format the analysis as follows: [first intense emotion, second most intense]. 
+    Length of array must be less than 4. 
+    If user was satisfied with the previous analysis, return null.
     ## content
     Your response to user as second person pronoun "you". 
     Don't use third person pronoun. 
@@ -393,7 +401,8 @@ Use JSON format with the following properties:
 const getEmotionList = async (userid) => {
     const emotions = await Statistic.distinct( "subcategory", { category: "emotion", userid: userid } )    
     const presetEmotions = [...EMOTION_LIST.split(", ")]
-    const mergeList = presetEmotions.concat(emotions)
+    const mergeList = presetEmotions
+    // .concat(emotions)
     return [...new Set(mergeList)];
 }
 
