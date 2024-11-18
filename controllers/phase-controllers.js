@@ -116,23 +116,21 @@ const confirmEmotions = async (diary, userid) => {
     const task_instruction = ` 
 Return the response in JSON format, structured as follows:
 ### emotions
-Consider the diary to assign 2 or 1 emotion labels. Only from this emotion list: ${emotionList}. Only return the assigned words.
-Please don't provide any other labels outside of this list.
+Recorgize emotions in the diary to assign 2 or 1 emotion labels. Consider emotion in this list: ${emotionList}.
 Array starts with the strongest and listing them in descending order.
 Return 2 or 1 strongest emotions in the array.
 Check again and make sure that emotions property only includes values in emotion list. 
 ### rationale
 Answer that the emotions you put in emotion property are included in emotion list or not. Reason how you generate emotions property.  
 ### content
-Explain to user why you think user have emotions that listed in the analysis property. Your response to user should be as second person pronoun "you". Your response should be shorter than 50 words.
+Explain to user why you think user have emotions that listed in the analysis property. Your response to user should be as second person pronoun "you". Your response should be shorter than 100 words.
 
 Response must be JSON format:
 {
     "emotions": [string],
     "rationale": string,
     "content": string
-}
-    `
+}`
     const response = {
         error: "",
         phase: PHASE_LABEL.FULLFILL,
