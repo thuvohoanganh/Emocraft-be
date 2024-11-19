@@ -13,6 +13,8 @@ const {
 } = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
+const { EMOTION_LIST } = require("../constant");
+const Statistic = require('../models/statistic');
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -132,41 +134,26 @@ const generateWeeklySummary = async (req, res, next) => {
         return next(err);
     }
 
+    // Get the range of date for the week
     let today = new Date();
     let lastMonday, lastSunday;
 
-    // Calculate the last Monday and last Sunday
     lastMonday = new Date(today);
     lastSunday = new Date(today);
     
     if (today.getDay() === 0) {
         lastMonday.setDate(today.getDate() - 7 - 6);
+        // lastMonday.setDate(today.getDate() - 7);
     } else {
         lastMonday.setDate(today.getDate() - today.getDay() - 6);
+        // lastMonday.setDate(today.getDate() - today.getDay());
     }
 
     lastMonday.setHours(0, 0, 0, 0);
     lastSunday.setDate(lastMonday.getDate() + 6);
-    lastSunday.setHours(23, 59, 59, 999);
+    lastSunday.setHours(23, 59, 59, 999);    
 
-    let existingSummary;
-    try {
-        existingSummary = await Summary.findOne({
-            userid: uid,
-            startdate: { $gte: lastMonday },
-            enddate: { $lte: lastSunday }
-        });
-    } catch (err) {
-        err && console.log(err);
-        return next(new HttpError('Fetching summary failed, please try again later.', 500));
-    }
-
-    // If summary already exists for the week, return it
-    if (existingSummary) {
-        return res.status(200).json(existingSummary);
-    }
-
-
+    // Get the diary entries for the week
     let diaries;
     try {
         diaries = await Diary.find({
@@ -191,7 +178,8 @@ const generateWeeklySummary = async (req, res, next) => {
             startdate: lastMonday.toISOString(),
             enddate: lastSunday.toISOString(),
             dailyEmotions: {},
-            emotionPercentages: { joy: 0, sadness: 0, disgust: 0, anger: 0, fear: 0, surprise: 0 },
+            //TO-DO: REPRESENT EMOTIONS THAT SHOWS USING BAR CHART?
+            emotionPercentages: {},
             weeklyEmotions: []
         });
     
@@ -208,65 +196,42 @@ const generateWeeklySummary = async (req, res, next) => {
     const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
     // Processing the emotions
+    //TOOD: ADJUST THE EMOTION REPRESENTATION
     const dailyTopEmotions = {};
-    const totalEmotions = { joy: 0, sadness: 0, disgust: 0, anger: 0, fear: 0, surprise: 0 };
+    // const emotionList = await getEmotionList(uid);
+    const totalEmotions = {}
 
+    // console.log("Getting emotions summary...\n");
     diaries.forEach(diary => {
-        const { emotions, timestamp } = diary;
-        const day = dayMap[new Date(timestamp).getDay()];
+        const day = dayMap[new Date(diary.timestamp).getDay()];
+        // console.log(`day: ${day}\n`);
+        const emotions = diary.emotions; // Directly use the `emotions` array from the diary structure.
+    
+        if (!Array.isArray(emotions)) {
+            console.error(`Invalid emotions format for diary entry on ${diary.timestamp}`);
+            return; // Skip this diary entry if `emotions` is not an array.
+        }
 
-        let parsedEmotions;
-        try {
-            if (emotions) {
-                parsedEmotions = JSON.parse(emotions);
+        dailyTopEmotions[day] = emotions;
+    
+        // Add the emotions to the daily and total emotion counts
+        emotions.forEach(emotion => {
+            if (totalEmotions[emotion]) {
+                totalEmotions[emotion] += 1;
             } else {
-                parsedEmotions = {}; 
+                totalEmotions[emotion] = 1;
             }
-        } catch (err) {
-            console.error(`Failed to parse emotions for diary entry on ${timestamp}:`, err);
-            parsedEmotions = {};
-        }
-
-        if (!dailyTopEmotions[day]) {
-            dailyTopEmotions[day] = { ...parsedEmotions };
-        } else {
-            // Aggregate emotions for the same day
-            for (const emotion in parsedEmotions) {
-                dailyTopEmotions[day][emotion] += parsedEmotions[emotion];
-            }
-        }
-
-        // Accumulate total emotions for the week
-        for (const emotion in parsedEmotions) {
-            if (!isNaN(totalEmotions[emotion])) {
-                totalEmotions[emotion] += parsedEmotions[emotion];
-            }
-        }
+        });
     });
+    
+    // Log total emotions
+    // console.log('totalEmotions:', totalEmotions);
+    // console.log('dailyTopEmotions:', dailyTopEmotions);
 
-    console.log('totalEmotions:', totalEmotions);
-
-    // Determine top 2 emotions for each day
-    for (const day in dailyTopEmotions) {
-        const topTwo = Object.entries(dailyTopEmotions[day])
-            .filter(([, intensity]) => intensity > 0)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 2)
-            .map(([emotion]) => emotion);
-
-        dailyTopEmotions[day] = topTwo;
-    }
-
-    // Determine top 2 emotions for the entire week
-    const topTwoWeekly = Object.entries(totalEmotions)
-        .filter(([, intensity]) => intensity > 0)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 2)
-        .map(([emotion]) => emotion);
 
     // Calculate percentage for each emotion
     const totalIntensity = Object.values(totalEmotions).reduce((sum, val) => sum + val, 0);
-    const emotionPercentages = {joy: 0, sadness: 0, disgust: 0, anger: 0, fear: 0, surprise: 0 };
+    const emotionPercentages = {};
     
     if (totalIntensity > 0) {
         for (const emotion in totalEmotions) {
@@ -281,23 +246,51 @@ const generateWeeklySummary = async (req, res, next) => {
 
     // Summarize the diary entries
     const contentToSummarize = diaries.map(diary => {
-        const date = new Date(diary.timestamp).toLocaleString(); // Format timestamp to a readable format
+        const date = new Date(diary.timestamp).toLocaleString(); 
         return `On ${date}: ${diary.content}`;
     }).join("\n\n");
 
     let summary;
+    const user = await User.findById(uid);   
+    if (!user) {
+        throw new Error('User not found');
+    }
+
+    let existingSummary;
+    try {
+        existingSummary = await Summary.findOne({
+            userid: uid,
+            startdate: { $gte: lastMonday },
+            enddate: { $lte: lastSunday },
+            diaryEntries: contentToSummarize.trim() // Check if the same contentToSummarize exists
+        });
+    } catch (err) {
+        console.error(err);
+        return next(new HttpError('Fetching existing summary failed, please try again later.', 500));
+    }
+
+    if (existingSummary) {
+        // console.log("Existing summary found with matching content:", existingSummary);
+        return res.status(200).json(existingSummary);
+    }
+
+    // console.log("user:", user);
+
     try {
         const response = await openai.chat.completions.create({
             messages: [{
                 role: "user",
-                content: `I wrote some diary entries for this past week.
-                I want to understand my experiences and emotions better based on the diaries I wrote. 
-                Please summarize them into a coherent paragraph and tell me what emotions I felt and why in the third view.
-                Do not include any dates and time in the summary, try to make it short and easy to understand, and use you as the pronoun instead of I.
-                Ex: When work is hectic and Susan has a lot to do, she feels happy and proud, as seen in her recent entry where she described the day as reminiscent of the "good old days." She enjoys the feeling of being overwhelmed and productive, which brings her satisfaction and a sense of accomplishment.
-                Here are the entries:\n\n${contentToSummarize}`
+                content: 
+                `
+                    - You are a helpful assistant that analyzes the content of diary entries.
+                    - Given the diary entries for the past week, summarizes the experiences and emotions into a coherent paragraph.
+                    - Start with a general but speific observation about the week's overall trend. Be concise in your summary.
+                    - Use a third person view to for the summary and avoid including dates and times. Mention the user's name: ${user.name}.
+                    - Here are the diary entries: ${contentToSummarize}
+                `
             }],
-            model: "gpt-3.5-turbo"
+            model: "gpt-3.5-turbo",
+            temperature: 0,
         });
         summary = response.choices[0].message.content.trim();
     } catch (err) {
@@ -316,7 +309,8 @@ const generateWeeklySummary = async (req, res, next) => {
         enddate: lastSunday.toISOString(),
         dailyEmotions: dailyTopEmotions,
         emotionPercentages: emotionPercentages,
-        weeklyEmotions: topTwoWeekly
+        weeklyEmotions: Object.keys(totalEmotions),
+        diaryEntries: contentToSummarize,
     });
 
     try {
@@ -328,6 +322,13 @@ const generateWeeklySummary = async (req, res, next) => {
 
     res.status(200).json(newSummary);
 };
+
+const getEmotionList = async (userid) => {
+    const emotions = await Statistic.distinct( "subcategory", { category: "emotion", userid: userid } )    
+    const presetEmotions = [...EMOTION_LIST.split(", ")]
+    const mergeList = presetEmotions.concat(emotions)
+    return [...new Set(mergeList)];
+}
 
 module.exports = {
     chatbotConversation,
