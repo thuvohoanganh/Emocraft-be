@@ -161,7 +161,7 @@ Response must be JSON format:
 const generateAnalysisByContext = async (userid, diaryid, diary, dialog) => {
     const response = {
         error: "",
-        phase: PHASE_LABEL.FULLFILL,
+        phase: PHASE_LABEL.CONTEXT_RETRIEVAL,
         content: "",
     }
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
@@ -172,7 +172,10 @@ const generateAnalysisByContext = async (userid, diaryid, diary, dialog) => {
 When reasoning user’s emotion, provide the analysis results based on current diary first. 
 Then use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
 Based on previous diaries, identify whether the user has experienced similar emotions or been in similar contexts, and provide an explanation that allows the user to reflect on their current emotion based on those experiences.
-Previous diaries: ${retrievedDiaries}`
+Previous diaries: ${retrievedDiaries}
+Response should be no longer than 200 words.
+Your response to user should be as second person pronoun "you".
+`
 
     const _res = await generateResponse(diary, [], task_instruction)
 
@@ -189,7 +192,6 @@ Previous diaries: ${retrievedDiaries}`
 
     return response
 }
-
 
 const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) => {
     let results = []
@@ -208,10 +210,10 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
         const contextRelevantDiary = []
         diaries.forEach(diary => {
             let similarityScore = 0
-            if (diary.activity === context.activity) similarityScore += 0.4;
+            if (diary.activity === context.activity) similarityScore += 0.25;
             if (diary.location === context.location) similarityScore += 0.25;
             if (diary.people === context.people) similarityScore += 0.25;
-            if (diary.time_of_day === context.time_of_day) similarityScore += 0.1;
+            if (diary.time_of_day === context.time_of_day) similarityScore += 0.25;
 
             if (similarityScore >= 0.5) {
                 contextRelevantDiary.push({
@@ -499,10 +501,8 @@ module.exports = {
     checkCriteriaExplorePhase,
     askMissingInfor,
     generateFeedbackPhase,
-    generateResponse,
     generateRationaleSummary,
     confirmEmotions,
-    generateAnalysis,
     generateAnalysisByContext,
     categorizeContext
 }
