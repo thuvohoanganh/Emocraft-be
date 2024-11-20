@@ -38,9 +38,9 @@ const EMOTION_LABEL = {
 
 const PHASE_LABEL = {
     BEGINNING: "beginning",
-    MISSING_EMOTION: "missing_emotion",
-    MISSING_CONTEXT: "missing_context",
     FULLFILL: "fulfill",
+    CONTEXT_RETRIEVAL: "context_retrieval",
+    EMOTION_RETRIEVAL: "emotion_retrieval",
     FEEDBACK: "feedback",
 }
 
