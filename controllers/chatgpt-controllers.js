@@ -104,7 +104,7 @@ const chatbotConversation = async (req, res, next) => {
         response.content = response.content.replace(/^\"+|\"+$/gm,'')
     }
 
-    // console.log("response", response)
+    console.log("response", response)
     console.log('------------------------------')
     res.status(200).json({
         data: response

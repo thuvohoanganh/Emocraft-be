@@ -304,10 +304,10 @@ const encode = async (req, res, next) => {
         }
         if (emotions?.length > 0) {
             emotions.forEach(async (e) => {
-                const contextFactor = await Statistic.findOne({ category: "emotion", subcategory: e, userid });
-                if (contextFactor) {
-                    contextFactor.quantity += 1;
-                    contextFactor.save();
+                const emotionFactor = await Statistic.findOne({ category: "emotion", subcategory: e, userid });
+                if (emotionFactor) {
+                    emotionFactor.quantity += 1;
+                    emotionFactor.save();
                 } else {
                     const newSubcategory = new Statistic({
                         category: "emotion",
