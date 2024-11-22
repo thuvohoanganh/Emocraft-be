@@ -1,7 +1,7 @@
 const OpenAI = require("openai")
 const dotenv = require("dotenv")
 const { EMOTION_LIST } = require("../constant");
-const { PHASE_LABEL, instruction_32_emotion } = require('../constant')
+const { PHASE_LABEL } = require('../constant')
 const Diary = require('../models/diary');
 const Statistic = require('../models/statistic');
 const { minmaxScaling } = require('../utils');
@@ -57,9 +57,9 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
         if (res.summary.event && res.summary.location && res.summary.people && res.summary.time_of_day) {
             response.next_phase = PHASE_LABEL.FULLFILL
         }
-        else if (res.summary.skip) {
-            response.next_phase = PHASE_LABEL.FULLFILL
-        }
+        // else if (res.summary.skip) {
+        //     response.next_phase = PHASE_LABEL.FULLFILL
+        // }
         else {
             response.next_phase = PHASE_LABEL.BEGINNING
         }
@@ -116,7 +116,9 @@ const confirmEmotions = async (diary, userid) => {
     const task_instruction = ` 
 Return the response in JSON format, structured as follows:
 ### emotions
-Recorgize emotions in the diary to assign 2 or 1 emotion labels. Consider emotion in this list: ${emotionList}.
+Recorgize emotions in the diary to assign 2 or 1 emotion labels. 
+Consider emotion in this list: ${emotionList}. Don't include any emotion outside of the list.
+Find the most similar emotion in the list to describe emotions in diary.
 Array starts with the strongest and listing them in descending order.
 Return 2 or 1 strongest emotions in the array.
 Check again and make sure that emotions property only includes values in emotion list. 
@@ -156,56 +158,147 @@ Response must be JSON format:
     return response
 }
 
-const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) => {
+const generateAnalysisByContext = async (userid, diaryid, diary, dialog) => {
     const response = {
         error: "",
-        phase: PHASE_LABEL.FULLFILL,
+        phase: PHASE_LABEL.CONTEXT_RETRIEVAL,
         content: "",
-        analysis: null,
-        rationale: ""
     }
+    const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
+
+    if (retrievedDiaries.length === 0) return response
+
+    const task_instruction = `Review the diary summarize the reasons for that emotion.
+When reasoning user’s emotion, provide the analysis results based on current diary first. 
+Then use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
+Based on previous diaries, identify whether the user has experienced similar emotions or been in similar contexts, and provide an explanation that allows the user to reflect on their current emotion based on those experiences.
+Previous diaries: ${retrievedDiaries}
+Response should be no longer than 200 words.
+Your response to user should be as second person pronoun "you".
+`
+
+    const _res = await generateResponse(diary, [], task_instruction)
+
+    try {
+        const res = JSON.parse(_res)
+        response.content = res.content
+        console.log("generateAnalysisByContext", res)
+    } catch {
+        console.error(_res)
+        response.content = _res
+    }
+
+    response.content = response.content?.replace(/^\"+|\"+$/gm, '')
+
+    return response
+}
+
+const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) => {
+    let results = []
 
     try {
         const context = await categorizeContext(diary, dialog)
 
         console.log("retrieveRelevantDiaryByContext", context)
 
-        diaries = await Diary.find({ userid: userid, _id : { $ne: diaryid } });
+        diaries = await Diary.find({ userid: userid, _id: { $ne: diaryid } });
         console.log("diaryid", diaryid)
         if (!diaries) {
-            return response
-        } 
+            return results
+        }
 
-        const similarityScores = []
+        const contextRelevantDiary = []
         diaries.forEach(diary => {
-            let similarityScore = 0 
-            if (diary.location === context.location) similarityScore += 1;
-            if (diary.people === context.people) similarityScore += 1;
-            if (diary.activity === context.activity) similarityScore += 1;  
-            if (diary.time_of_day === context.time_of_day) similarityScore += 1;   
-            similarityScores.push(similarityScore)         
-        })
+            let similarityScore = 0
+            if (diary.activity === context.activity) similarityScore += 0.25;
+            if (diary.location === context.location) similarityScore += 0.25;
+            if (diary.people === context.people) similarityScore += 0.25;
+            if (diary.time_of_day === context.time_of_day) similarityScore += 0.25;
 
-        const similarityScoresScale = minmaxScaling(similarityScores)
-        const sortedDiaries = []
-        diaries.forEach((diary, index) => {
-            sortedDiaries.push({
-                diary_id: diary._id,
-                score: similarityScoresScale[index] + diary.context_retention,
-                similarity: similarityScoresScale[index],
-                retention: diary.context_retention,
-                content: diary.content
-            })       
+            if (similarityScore >= 0.5) {
+                contextRelevantDiary.push({
+                    content: diary.content,
+                    similarity: similarityScore,
+                    emotion_retention: diary.emotion_retention,
+                    context_retention: diary.context_retention,
+                    activity: diary.activity,
+                    location: diary.location,
+                    people: diary.people,
+                    time_of_day: diary.time_of_day,
+                    emotions: diary.emotions
+                })
+            }
         })
-        sortedDiaries.sort((a,b) => b.score - a.score)
-        console.log("sortedDiaries", sortedDiaries)
-        const topThree = diaries.filter(e => e._id === sortedDiaries[0].diary_id || e._id === sortedDiaries[1].diary_id || e._id === sortedDiaries[2].diary_id)
+        console.log("contextRelevantDiary", contextRelevantDiary)
+
+        let topThree = []
+        if (contextRelevantDiary.length > 0) {
+            contextRelevantDiary.sort((a, b) => (b.context_retention + b.similarity) - (a.context_retention + a.similarity))
+            topThree = contextRelevantDiary.slice(0, 3)
+            results = topThree.map(e => ({
+                content: e.content,
+                activity: e.activity,
+                location: e.location,
+                people: e.people,
+                time_of_day: e.time_of_day,
+                emotions: e.emotions
+            }))
+        }
+        console.log("topThree", topThree)
     } catch (err) {
         err && console.error(err);
-        response.error = err
-        return response
+        return results
     }
-    return response
+    return results
+}
+
+const retrieveRelevantDiaryByEmotion = async (userid, diaryid, diary, dialog, emotions) => {
+    let results = []
+
+    try {
+        diaries = await Diary.find({ userid: userid, _id: { $ne: diaryid } });
+        console.log("diaryid", diaryid)
+        if (!diaries) {
+            return results
+        }
+
+        const emotionRelevantDiary = []
+        diaries.forEach(diary => {
+            let similarityScore = 0
+            emotions.forEach(emotion => {
+                if (diary.emotions?.includes(emotion)) {
+                    emotionRelevantDiary += 1
+                }
+            })
+
+            if (similarityScore >= 0.5) {
+                contextRelevantDiary.push({
+                    content: diary.content,
+                    similarity: similarityScore,
+                    emotion_retention: diary.emotion_retention,
+                    context_retention: diary.context_retention,
+                    activity: diary.activity,
+                    location: diary.location,
+                    people: diary.people,
+                    time_of_day: diary.time_of_day,
+                    emotions: diary.emotions
+                })
+            }
+        })
+        console.log("contextRelevantDiary", contextRelevantDiary)
+
+        let topThree = []
+        if (contextRelevantDiary.length > 0) {
+            contextRelevantDiary.sort((a, b) => (b.context_retention + b.similarity) - (a.context_retention + b.similarity))
+            topThree = contextRelevantDiary.slice(0, 3)
+        }
+        console.log("topThree", topThree)
+        results = topThree
+    } catch (err) {
+        err && console.error(err);
+        return results
+    }
+    return results
 }
 
 const generateFeedbackPhase = async (diary, dialog, userid) => {
@@ -217,7 +310,13 @@ const generateFeedbackPhase = async (diary, dialog, userid) => {
     - Use JSON format with the following properties:
     - Emotion list: ${emotionList}.
     ## analysis
-    Based on diary and dialog, detect which emotions of emotion list in the diary entry according to their intensity, starting with the strongest and listing them in descending order. Do not repeat emotion. Format the analysis as follows: [first intense emotion, second most intense]. length of array must be less than 4. If user was satisfied with the previous analysis, return null.
+    Based on diary and dialog, detect which emotions of emotion list in the diary entry according to their intensity, starting with the strongest and listing them in descending order.
+    Don't include any emotion outside of the list.
+    Find the most similar emotion in the list to describe emotions in diary.
+    Do not repeat emotion. 
+    Format the analysis as follows: [first intense emotion, second most intense]. 
+    Length of array must be less than 4. 
+    If user was satisfied with the previous analysis, return null.
     ## content
     Your response to user as second person pronoun "you". 
     Don't use third person pronoun. 
@@ -349,23 +448,23 @@ const categorizeContext = async (diary, dialog, userid) => {
 
     const existingCategories = {}
     try {
-        const location = await Statistic.distinct( "subcategory", { category: "location", userid } )
-        const people = await Statistic.distinct( "subcategory", { category: "people", userid } )
-        const activity = await Statistic.distinct( "subcategory", { category: "activity", userid } )
+        const location = await Statistic.distinct("subcategory", { category: "location", userid })
+        const people = await Statistic.distinct("subcategory", { category: "people", userid })
+        const activity = await Statistic.distinct("subcategory", { category: "activity", userid })
 
         existingCategories["location"] = location
         existingCategories["people"] = people
         existingCategories["activity"] = activity
-    } catch(err) {
+    } catch (err) {
         console.error(err)
     }
 
     const { activity, location, people } = existingCategories
     const instruction = `Based on diary and dialog, classify contextual information into category.
 Use JSON format with the following properties:
-- activity: detect key activity in the diary and return the category that it belong to. Consider these category: ${activity || ""}, studying, research, resting, meeting, eating, socializing, leisure activity, exercise, moving. If it doesn't belong to any of those, generate suitable category label. Don't return "other".
-- location: detect where did user usually have that emotions and return the category that it belong to. Consider these category: ${location || ""}, home, classroom, library, restaurant, office, laboratory. If it doesn't belong to any of those, generate suitable category label. Don't return "other".
-- people: detect who did cause those emotions and return the category that it belong to. Consider these category: ${people || ""}, alone, family, boyfriend, girlfriend, roommate, friend, colleague, professor. If it doesn't belong to any of those, generate suitable category label. Don't return "other".
+- activity: detect key activity in the diary and return the category that it belong to. Consider these category: ${activity || ""}, studying, research, resting, meeting, eating, socializing, leisure activity, exercise, moving. If it doesn't belong to any of those, generate suitable category label. Return only one main activity. Don't return "other".
+- location: detect where did user usually have that emotions and return the category that it belong to. Consider these category: ${location || ""}, home, classroom, library, restaurant, office, laboratory. If it doesn't belong to any of those, generate suitable category label. Return only one location label relate to activity. Don't return "other".
+- people: detect who did cause those emotions and return the category that it belong to. Consider these category: ${people || ""}, alone, family, boyfriend, girlfriend, roommate, friend, colleague, professor. If it doesn't belong to any of those, generate suitable category label. Return only one people label relate to activity. Don't return "other".
 - time_of_day: what time of day did event happen. Only use one of the following: morning, noon, afternoon, evening, night, all_day. Return only one word.
 - rationale: Describe your rationale on how properties were derived.
     {
@@ -383,7 +482,7 @@ Use JSON format with the following properties:
         response.location = res.location
         response.people = res.people
         response.time_of_day = res.time_of_day
-    } catch(error) {
+    } catch (error) {
         console.error("categorizeContext", error)
     }
 
@@ -391,9 +490,10 @@ Use JSON format with the following properties:
 }
 
 const getEmotionList = async (userid) => {
-    const emotions = await Statistic.distinct( "subcategory", { category: "emotion", userid: userid } )    
+    const emotions = await Statistic.distinct("subcategory", { category: "emotion", userid: userid })
     const presetEmotions = [...EMOTION_LIST.split(", ")]
-    const mergeList = presetEmotions.concat(emotions)
+    const mergeList = presetEmotions
+    // .concat(emotions)
     return [...new Set(mergeList)];
 }
 
@@ -401,11 +501,9 @@ module.exports = {
     checkCriteriaExplorePhase,
     askMissingInfor,
     generateFeedbackPhase,
-    generateResponse,
     generateRationaleSummary,
     confirmEmotions,
-    generateAnalysis,
-    retrieveRelevantDiaryByContext,
+    generateAnalysisByContext,
     categorizeContext
 }
 

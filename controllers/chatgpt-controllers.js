@@ -8,8 +8,7 @@ const {
     askMissingInfor,
     generateFeedbackPhase,
     confirmEmotions,
-    generateAnalysis,
-    retrieveRelevantDiaryByContext
+    generateAnalysisByContext
 } = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
@@ -46,6 +45,8 @@ const chatbotConversation = async (req, res, next) => {
         summary = result.summary
     } 
     else if (currentPhase === PHASE_LABEL.FULLFILL) {
+        nextPhase = PHASE_LABEL.CONTEXT_RETRIEVAL
+    } else if (currentPhase === PHASE_LABEL.CONTEXT_RETRIEVAL) {
         nextPhase = PHASE_LABEL.FEEDBACK
     } 
 
@@ -70,11 +71,16 @@ const chatbotConversation = async (req, res, next) => {
     } 
     else if (nextPhase === PHASE_LABEL.FULLFILL) {
         const result = await confirmEmotions(diary, userid)
-        retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content
         response.analysis = result.analysis
+    } 
+    else if (nextPhase === PHASE_LABEL.CONTEXT_RETRIEVAL) {
+        const result = await generateAnalysisByContext(userid, diaryid, diary, dialog)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
     } 
     else if (nextPhase === PHASE_LABEL.FEEDBACK) {
         const result = await generateFeedbackPhase(diary, dialog, userid)
@@ -98,7 +104,7 @@ const chatbotConversation = async (req, res, next) => {
         response.content = response.content.replace(/^\"+|\"+$/gm,'')
     }
 
-    console.log("response", response)
+    // console.log("response", response)
     console.log('------------------------------')
     res.status(200).json({
         data: response
