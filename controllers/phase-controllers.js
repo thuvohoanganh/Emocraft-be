@@ -161,7 +161,7 @@ Response must be JSON format:
 const generateAnalysisByContext = async (userid, diaryid, diary, dialog) => {
     const response = {
         error: "",
-        phase: PHASE_LABEL.CONTEXT_RETRIEVAL,
+        phase: PHASE_LABEL.FEEDBACK,
         content: "",
     }
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
