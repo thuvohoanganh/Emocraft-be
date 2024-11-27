@@ -27,7 +27,7 @@ const chatbotConversation = async (req, res, next) => {
         );
     }
 
-    const {userid, diaryid, diary, dialog, phase: currentPhase, analysis } = req.body
+    const {userid, diaryid, diary, dialog, phase: currentPhase, emotions } = req.body
     let response = {
         phase: "",
         content: "",
@@ -77,7 +77,7 @@ const chatbotConversation = async (req, res, next) => {
         response.analysis = result.analysis
     } 
     else if (nextPhase === PHASE_LABEL.CONTEXT_RETRIEVAL) {
-        const result = await generateAnalysisByContext(userid, diaryid, diary, dialog)
+        const result = await generateAnalysisByContext(userid, diaryid, diary, dialog, emotions)
         error = result.error
         response.phase = result.phase
         response.content = result.content

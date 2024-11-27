@@ -158,25 +158,27 @@ Response must be JSON format:
     return response
 }
 
-const generateAnalysisByContext = async (userid, diaryid, diary, dialog) => {
+const generateAnalysisByContext = async (userid, diaryid, diary, dialog, emotions) => {
     const response = {
         error: "",
         phase: PHASE_LABEL.FEEDBACK,
         content: "",
     }
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
+    const emotionRelevantDiaries = await retrieveRelevantDiaryByEmotion(userid, diaryid, emotions)
 
-    if (retrievedDiaries.length === 0) return response
+        if (retrievedDiaries.length === 0) return response
 
-    const task_instruction = `Review the diary, summarize the reasons for that emotion.
+    let task_instruction = `Review the diary, summarize the reasons for that emotion.
 When reasoning user’s emotion, provide the analysis results based on current diary first. 
 Then use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
 Based on previous diaries, identify whether the user has experienced similar emotions or been in similar contexts, and provide an explanation that allows the user to reflect on their current emotion based on those experiences.
-Previous diaries: ${retrievedDiaries}
 Response should be no longer than 200 words.
 Your response to user should be as second person pronoun "you".
+Emotions in current diary: ${emotions}
+Previous diaries have similar context: ${retrievedDiaries}
+${emotionRelevantDiaries.length > 0? `Previous diaries have similar emotions: ${emotionRelevantDiaries}` : ""}
 `
-
     const _res = await generateResponse(diary, [], task_instruction)
 
     try {
@@ -216,12 +218,19 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
 
             if (similarityScore >= 0.5) {
                 contextRelevantDiary.push({
-                    content: e.content,
-                    emotions: e.emotions
+                    content: diary.content,
+                    similarity: similarityScore,
+                    emotion_retention: diary.emotion_retention,
+                    context_retention: diary.context_retention,
+                    activity: diary.activity,
+                    location: diary.location,
+                    people: diary.people,
+                    time_of_day: diary.time_of_day,
+                    emotions: diary.emotions
                 })
             }
         })
-        console.log("contextRelevantDiary", contextRelevantDiary)
+        // console.log("contextRelevantDiary", contextRelevantDiary)
 
         let topThree = []
         if (contextRelevantDiary.length > 0) {
@@ -232,7 +241,7 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
                 emotions: e.emotions
             }))
         }
-        console.log("topThree", topThree)
+        // console.log("topThree context", topThree)
     } catch (err) {
         err && console.error(err);
         return results
@@ -242,7 +251,10 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
 
 const retrieveRelevantDiaryByEmotion = async (userid, diaryid, emotions) => {
     let results = []
-
+    if (!emotions?.length) {
+        return results
+    }
+    console.log("retrieveRelevantDiaryByEmotion", emotions)
     try {
         diaries = await Diary.find({ userid: userid, _id: { $ne: diaryid } });
         if (!diaries) {
@@ -253,12 +265,12 @@ const retrieveRelevantDiaryByEmotion = async (userid, diaryid, emotions) => {
         let similarities = []
         diaries.forEach(diary => {
             let similarityScore = 0
-            emotions.forEach(emotion => {
-                diary.forEach(e => {
+            emotions && emotions.forEach(emotion => {
+                diary?.emotions && diary.emotions.forEach(e => {
                     if (emotion === e) {
                         similarityScore += 1
                     } else if (EMOTION_DIMENSION[emotion] === EMOTION_DIMENSION[e]) {
-                        similarityScore += 1
+                        similarityScore += 0.5
                     }
                 })
             })
@@ -277,18 +289,18 @@ const retrieveRelevantDiaryByEmotion = async (userid, diaryid, emotions) => {
                 similarities.push(similarityScore)
             }
         })
+        console.log("emotionRelevantDiary", emotionRelevantDiary)
+
         similarities = minmaxScaling(similarities)
 
         similarities.forEach((similarityScore, index) => {
             emotionRelevantDiary[index].similarity = similarityScore
         })
         
-        console.log("contextRelevantDiary", contextRelevantDiary)
-
         let topThree = []
-        if (contextRelevantDiary.length > 0) {
-            contextRelevantDiary.sort((a, b) => (b.emotion_retention + b.similarity) - (a.emotion_retention + b.similarity))
-            topThree = contextRelevantDiary.slice(0, 3)
+        if (emotionRelevantDiary.length > 0) {
+            emotionRelevantDiary.sort((a, b) => (b.emotion_retention + b.similarity) - (a.emotion_retention + a.similarity))
+            topThree = emotionRelevantDiary.slice(0, 3)
         }
         console.log("topThree emotion", topThree)
         results = topThree
@@ -349,7 +361,8 @@ const generateFeedbackPhase = async (diary, dialog, userid) => {
         } else {
             response.content = _res?.replace(/^\"+|\"+$/gm, '')
         }
-    } catch {
+    } catch(error) {
+        console.log(error)
         if (typeof _res === "string") {
             response.content = _res.replace(/^\"+|\"+$/gm, '')
         } else {
@@ -489,7 +502,7 @@ Use JSON format with the following properties:
 
 const getEmotionList = async (userid) => {
     const emotions = await Statistic.distinct("subcategory", { category: "emotion", userid: userid })
-    const presetEmotions = EMOTION_LABEL
+    const presetEmotions = Object.values(EMOTION_LABEL)
     const mergeList = presetEmotions
     // .concat(emotions)
     return [...new Set(mergeList)];
