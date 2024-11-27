@@ -63,10 +63,11 @@ const EMOTION_DIMENSION = {
 
 const PHASE_LABEL = {
     BEGINNING: "beginning",
-    FULLFILL: "fulfill",
-    CONTEXT_RETRIEVAL: "context_retrieval",
+    EMOTION_LABEL: "fulfill",
+    REFLECTION: "context_retrieval",
     EMOTION_RETRIEVAL: "emotion_retrieval",
-    FEEDBACK: "feedback",
+    REVISE_EMOTION_LABEL: "feedback",
+    GOODBYE: "goodbye",
 }
 
 module.exports = {

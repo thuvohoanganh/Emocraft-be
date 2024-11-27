@@ -55,10 +55,10 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     try {
         const res = JSON.parse(_res)
         if (res.summary.event && res.summary.location && res.summary.people && res.summary.time_of_day) {
-            response.next_phase = PHASE_LABEL.FULLFILL
+            response.next_phase = PHASE_LABEL.EMOTION_LABEL
         }
         // else if (res.summary.skip) {
-        //     response.next_phase = PHASE_LABEL.FULLFILL
+        //     response.next_phase = PHASE_LABEL.EMOTION_LABEL
         // }
         else {
             response.next_phase = PHASE_LABEL.BEGINNING
@@ -111,9 +111,11 @@ const askMissingInfor = async (diary, dialog, summary) => {
     return response
 }
 
-const confirmEmotions = async (diary, userid) => {
+const classifyEmotion = async (diary, userid) => {
     const emotionList = await getEmotionList(userid)
-    const task_instruction = ` 
+    const task_instruction = ` You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
+You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
+
 Return the response in JSON format, structured as follows:
 ### emotions
 Recorgize emotions in the diary to assign 2 or 1 emotion labels. 
@@ -135,7 +137,7 @@ Response must be JSON format:
 }`
     const response = {
         error: "",
-        phase: PHASE_LABEL.FULLFILL,
+        phase: PHASE_LABEL.EMOTION_LABEL,
         content: "",
         analysis: null,
         rationale: ""
@@ -147,7 +149,7 @@ Response must be JSON format:
         const res = JSON.parse(_res)
         response.analysis = res.emotions
         response.content = res.content
-        console.log("confirmEmotions", res)
+        console.log("classifyEmotion", res)
     } catch {
         console.error(_res)
         response.content = _res
@@ -158,39 +160,41 @@ Response must be JSON format:
     return response
 }
 
-const generateAnalysisByContext = async (userid, diaryid, diary, dialog, emotions) => {
+const generateReflectionFromMemory = async (userid, diaryid, diary, dialog, emotions) => {
     const response = {
         error: "",
-        phase: PHASE_LABEL.FEEDBACK,
+        phase: PHASE_LABEL.REFLECTION,
         content: "",
     }
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
     const emotionRelevantDiaries = await retrieveRelevantDiaryByEmotion(userid, diaryid, emotions)
 
-        if (retrievedDiaries.length === 0) return response
+    if (!retrievedDiaries.length && !emotionRelevantDiaries.length) return response
 
-    let task_instruction = `Review the diary, summarize the reasons for that emotion.
-When reasoning user’s emotion, provide the analysis results based on current diary first. 
-Then use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
+    let task_instruction = `You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
+You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
+
+Paragraph 1:
+Use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
 Based on previous diaries, identify whether the user has experienced similar emotions or been in similar contexts, and provide an explanation that allows the user to reflect on their current emotion based on those experiences.
 Response should be no longer than 200 words.
 Your response to user should be as second person pronoun "you".
-Emotions in current diary: ${emotions}
-Previous diaries have similar context: ${retrievedDiaries}
-${emotionRelevantDiaries.length > 0? `Previous diaries have similar emotions: ${emotionRelevantDiaries}` : ""}
+${emotions? `Emotions in current diary: ${JSON.stringify(emotions)}` : ""}
+${retrievedDiaries.length > 0? `Previous diaries have similar context: ${JSON.stringify(retrievedDiaries)}` : ""}
+${emotionRelevantDiaries.length > 0? `Previous diaries have similar emotions: ${JSON.stringify(emotionRelevantDiaries)}` : ""}
+
+Paragraph 2:
+Since your analysis may not always be accurate, encourage user’s feedback about emotional classification and reasoning. Separate with the paragraph 1 by a line break.
 `
-    const _res = await generateResponse(diary, [], task_instruction)
 
-    try {
-        const res = JSON.parse(_res)
-        response.content = res.content
-        console.log("generateAnalysisByContext", res)
-    } catch {
-        console.error(_res)
+    console.log("task_instruction", task_instruction)
+
+    const _res = await generateResponse(diary, dialog.slice(-3), task_instruction)
+
+    if (_res) {
         response.content = _res
+        response.content = response.content?.replace(/^\"+|\"+$/gm, '')
     }
-
-    response.content = response.content?.replace(/^\"+|\"+$/gm, '')
 
     return response
 }
@@ -238,7 +242,11 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
             topThree = contextRelevantDiary.slice(0, 3)
             results = topThree.map(e => ({
                 content: e.content,
-                emotions: e.emotions
+                emotions: e.emotions,
+                activity: e.activity,
+                location: e.location,
+                people: e.people,
+                time_of_day: e.time_of_day,
             }))
         }
         // console.log("topThree context", topThree)
@@ -289,7 +297,7 @@ const retrieveRelevantDiaryByEmotion = async (userid, diaryid, emotions) => {
                 similarities.push(similarityScore)
             }
         })
-        console.log("emotionRelevantDiary", emotionRelevantDiary)
+        // console.log("emotionRelevantDiary", emotionRelevantDiary)
 
         similarities = minmaxScaling(similarities)
 
@@ -303,7 +311,10 @@ const retrieveRelevantDiaryByEmotion = async (userid, diaryid, emotions) => {
             topThree = emotionRelevantDiary.slice(0, 3)
         }
         console.log("topThree emotion", topThree)
-        results = topThree
+        results = topThree.map(e => ({
+            content: e.content,
+            emotions: e.emotions,
+        }))
     } catch (err) {
         err && console.error(err);
         return results
@@ -311,11 +322,10 @@ const retrieveRelevantDiaryByEmotion = async (userid, diaryid, emotions) => {
     return results
 }
 
-const generateFeedbackPhase = async (diary, dialog, userid) => {
+const reviseEmotionClassification = async (diary, dialog, userid) => {
     const emotionList = await getEmotionList(userid)
     const instruction = `
     - Given a dialogue history and user's diary, do they agree or disagree with what you told them?
-    - If user are satisfied with the analysis, say thank and tell them to click Finish button on the top screen to finish section.
     - If user give feedback to you, try to make analysis again based on diary and their feedback.
     - Use JSON format with the following properties:
     - Emotion list: ${emotionList}.
@@ -326,7 +336,6 @@ const generateFeedbackPhase = async (diary, dialog, userid) => {
     Do not repeat emotion. 
     Format the analysis as follows: [first intense emotion, second most intense]. 
     Length of array must be less than 4. 
-    If user was satisfied with the previous analysis, return null.
     ## content
     Your response to user as second person pronoun "you". 
     Don't use third person pronoun. 
@@ -342,9 +351,10 @@ const generateFeedbackPhase = async (diary, dialog, userid) => {
             "rationale": string
         }
     `
+
     const response = {
         error: "",
-        phase: PHASE_LABEL.FEEDBACK,
+        phase: PHASE_LABEL.REVISE_EMOTION_LABEL,
         content: "",
         analysis: [],
         rationale: ""
@@ -353,7 +363,6 @@ const generateFeedbackPhase = async (diary, dialog, userid) => {
 
     try {
         const res = JSON.parse(_res)
-        // console.log("generateFeedbackPhase", res)
         if (res.content) {
             response.content = res.content.replace(/^\"+|\"+$/gm, '')
             response.analysis = res.analysis
@@ -368,6 +377,49 @@ const generateFeedbackPhase = async (diary, dialog, userid) => {
         } else {
             response.error = "ChatGPT return wrong format"
         }
+    }
+    return response
+}
+
+const checkUserSatisfaction = async (diary, dialog) => {
+    const response = {
+        error: "",
+        next_phase: PHASE_LABEL.REVISE_EMOTION_LABEL
+    }
+
+    const instruction = `- You are a helpful assistant that analyzes the content of the dialog history. If the last user'response agree with your emotion analysis, return true. If they don't, return false.`
+
+    const _res = await generateAnalysis(diary, dialog, instruction)
+    console.log("checkUserSatisfaction", _res)
+    try {
+        if (_res?.toLowerCase() === "true") {
+            response.next_phase = PHASE_LABEL.GOODBYE
+        }
+    } catch(error) {
+        console.error(error)
+        response.error = "ChatGPT failed"
+        return response
+    }
+
+    return response
+}
+
+const generateGoodbye = async (diary, dialog) => {
+    const instruction = `User expressed they are satisfied with your analysis about their emotion. Say thank and tell them to click Finish button on the top screen to finish section. Response should be shorter than 50 words.`
+    const response = {
+        error: "",
+        phase: PHASE_LABEL.GOODBYE,
+        content: "",
+        analysis: [],
+        rationale: ""
+    }
+    const _res = await generateResponse(diary, dialog, instruction)
+
+    try {
+        response.content = _res
+    } catch(error) {
+        console.error(error)
+        response.error = "ChatGPT return wrong format"
     }
     return response
 }
@@ -434,21 +486,6 @@ const generateAnalysis = async (diary, dialog, instruction) => {
     return response
 }
 
-const generateRationaleSummary = async (diary, dialog, initRationale) => {
-    const instruction = `You are and psychologist. you are good at emotion awareness and you can understand where human emotion come from on user's diary. From the dialog, you assess user' emotions from 0 to 5. User gave you feedback about your analysis.
-    - From the dialog, determine user agree or disagree with you analysis.
-    - If user agree, return exactly your previous rationale. DO NOT include double quotes \" at the start and the end of the response.
-    - If user disagree and give feedback, generate another rationale based on their feedback and your previous rationale. 
-    ${GENERAL_SPEAKING_RULES}
-    This is previous your rationale: ${initRationale}
-    Response example: From your diary, there's a sense of tiredness which can be associated with a low level of sadness. There's also a hint of joy from spending time with a friend and visting the cathedral. There's no indication of disgust, anger, fear, or surprise in your writing.
-    `
-    let updatedRationale = await generateResponse(diary, dialog, instruction)
-    updatedRationale = updatedRationale.replace(/^\"+|\"+$/gm, '')
-
-    return updatedRationale
-}
-
 const categorizeContext = async (diary, dialog, userid) => {
     const response = {
         activity: "",
@@ -511,10 +548,11 @@ const getEmotionList = async (userid) => {
 module.exports = {
     checkCriteriaExplorePhase,
     askMissingInfor,
-    generateFeedbackPhase,
-    generateRationaleSummary,
-    confirmEmotions,
-    generateAnalysisByContext,
-    categorizeContext
+    reviseEmotionClassification,
+    classifyEmotion,
+    generateReflectionFromMemory,
+    categorizeContext,
+    checkUserSatisfaction,
+    generateGoodbye
 }
 
