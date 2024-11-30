@@ -5,11 +5,13 @@ const User = require('../models/user');
 const Summary = require('../models/summary');
 const {
     checkCriteriaExplorePhase,
+    checkUserSatisfaction,
     askMissingInfor,
-    generateFeedbackPhase,
-    confirmEmotions,
-    generateAnalysis,
-    retrieveRelevantDiaryByContext
+    reviseEmotionClassification,
+    reviseEmotionReflection,
+    classifyEmotion,
+    generateEmotionReflection,
+    generateGoodbye
 } = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
@@ -32,7 +34,7 @@ const chatbotConversation = async (req, res, next) => {
         );
     }
 
-    const {userid, diaryid, diary, dialog, phase: currentPhase, analysis } = req.body
+    const {userid, diaryid, diary, dialog, phase: currentPhase, emotions } = req.body
     let response = {
         phase: "",
         content: "",
@@ -42,16 +44,24 @@ const chatbotConversation = async (req, res, next) => {
     let nextPhase = currentPhase
     let summary = null
 
-    /* START: Check criteria in current phase */
+    console.log("currentPhase", currentPhase)
+    /* START: Check criteria in current phase, define the next phase */
     if (currentPhase === PHASE_LABEL.BEGINNING) {
         const result = await checkCriteriaExplorePhase(diary, dialog)
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
-    } 
-    else if (currentPhase === PHASE_LABEL.FULLFILL) {
-        nextPhase = PHASE_LABEL.FEEDBACK
-    } 
+    } else if (currentPhase === PHASE_LABEL.EMOTION_LABEL) {
+        nextPhase = PHASE_LABEL.REFLECTION
+    } else if (currentPhase === PHASE_LABEL.REVISE_EMOTION_LABEL) {
+        nextPhase = PHASE_LABEL.REVISE_REFLECTION
+    } else if (currentPhase === PHASE_LABEL.REFLECTION) {
+        const result = await checkUserSatisfaction(diary, dialog)
+        nextPhase = result.next_phase
+    } else if (currentPhase === PHASE_LABEL.REVISE_REFLECTION) {
+        const result = await checkUserSatisfaction(diary, dialog)
+        nextPhase = result.next_phase
+    }
 
     if (!!error) {
         console.error(error)
@@ -61,7 +71,7 @@ const chatbotConversation = async (req, res, next) => {
         );
         return next(_error);
     }
-    /* END: Check criteria in current phase */
+    /* END: Check criteria in current phase, define the next phase */
 
     console.log("nextPhase", nextPhase)
 
@@ -72,20 +82,38 @@ const chatbotConversation = async (req, res, next) => {
         response.phase = result.phase
         response.content = result.content
     } 
-    else if (nextPhase === PHASE_LABEL.FULLFILL) {
-        const result = await confirmEmotions(diary, userid)
-        retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
+    else if (nextPhase === PHASE_LABEL.EMOTION_LABEL) {
+        const result = await classifyEmotion(diary, userid)
         error = result.error
         response.phase = result.phase
         response.content = result.content
         response.analysis = result.analysis
     } 
-    else if (nextPhase === PHASE_LABEL.FEEDBACK) {
-        const result = await generateFeedbackPhase(diary, dialog, userid)
+    else if (nextPhase === PHASE_LABEL.REFLECTION) {
+        const result = await generateEmotionReflection(userid, diaryid, diary, dialog, emotions)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+    } 
+    else if (nextPhase === PHASE_LABEL.REVISE_EMOTION_LABEL) {
+        const result = await reviseEmotionClassification(diary, dialog, userid)
         error = result.error
         response.phase = result.phase
         response.content = result.content
         response.analysis = result.analysis
+    }
+    else if (nextPhase === PHASE_LABEL.REVISE_REFLECTION) {
+        const result = await reviseEmotionReflection(userid, diaryid, diary, dialog, emotions)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+        response.analysis = result.analysis
+    }
+    else if (nextPhase === PHASE_LABEL.GOODBYE) {
+        const result = await generateGoodbye(diary, dialog)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
     }
     /* START: generate response */
 
@@ -344,4 +372,3 @@ module.exports = {
     chatbotConversation,
     checkAndFulfillSummary,
 }
-

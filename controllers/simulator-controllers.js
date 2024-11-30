@@ -30,7 +30,7 @@ Take a walk or grab coffee to refresh before tackling more work or attending any
 Spend time on hobbies or unwind by reading, playing a puzzle game, or catching up with friends online
 Read a book or research article; bedtime around 11:00 PM
 
-##Weekend Activities
+## Weekend Activities
 Alex often spends time at a local coffee shop or library, diving into personal projects or reading a book. They might also catch up on any class assignments that need extra focus.
 He enjoy hiking or visiting the botanical gardens to recharge. Occasionally, Alex joins friends for a sports activity, like badminton or a group yoga session.
 Weekends are ideal for exploring new restaurants or attending a local event with friends, such as a tech meetup or movie screening.
@@ -50,14 +50,14 @@ const writeDiary = async (req, res, next) => {
     const existingDiaryContent = existingDiary? existingDiary.map(e => e.content) : []
 
     const instruction = `${USER_PERSONA}
-    - Now you are writing your diary of the day.
+    - Now you are writing your diary of the day in Korean.
     - Write about only 1 episode. 
     - Diary should less than 50 words. 
     - Don't write the date.
     - Use simple words but natural language. Don't list activities.
     
     ${existingDiary.length > 0 ? 
-        `These are you previous diaries: ${JSON.stringify(existingDiaryContent)}`
+        `These are your previous diaries: ${JSON.stringify(existingDiaryContent)}`
     : ""}
     `
 
@@ -124,6 +124,7 @@ const userSimulatorResponse = async (req, res, next) => {
     You are encountering a conversation with an assistant. An assistant are trying to explore your contextual information and your emotions in your diary to understand you better.
     Your role is the user and your task is responding to the role assistant in the dialog. 
     If assisant provide undersanding about your emotions, you can agree or disagree with what assistant said and feedback to them what is your emotion.
+    You are a Korean, use Korean to response.
     Response should be less than 30 words. 
     Use simple words.
     Don't start the response with any special characters (e.g !"#$%&'()*+,-./:;<=>? )
@@ -159,7 +160,6 @@ const userSimulatorResponse = async (req, res, next) => {
 
     response.content = response.content.replace(/^\"+|\"+$/gm,'')
 
-    console.log(response)
     res.status(200).json({
         data: response
     });
