@@ -65,8 +65,8 @@ const PHASE_LABEL = {
     BEGINNING: "beginning",
     EMOTION_LABEL: "fulfill",
     REFLECTION: "context_retrieval",
-    EMOTION_RETRIEVAL: "emotion_retrieval",
     REVISE_EMOTION_LABEL: "feedback",
+    REVISE_REFLECTION: "revise_reflection",
     GOODBYE: "goodbye",
 }
 

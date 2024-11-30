@@ -8,8 +8,9 @@ const {
     checkUserSatisfaction,
     askMissingInfor,
     reviseEmotionClassification,
+    reviseEmotionReflection,
     classifyEmotion,
-    generateReflectionFromMemory,
+    generateEmotionReflection,
     generateGoodbye
 } = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
@@ -40,19 +41,20 @@ const chatbotConversation = async (req, res, next) => {
     let summary = null
 
     console.log("currentPhase", currentPhase)
-    /* START: Check criteria in current phase */
+    /* START: Check criteria in current phase, define the next phase */
     if (currentPhase === PHASE_LABEL.BEGINNING) {
         const result = await checkCriteriaExplorePhase(diary, dialog)
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
-    } 
-    else if (currentPhase === PHASE_LABEL.EMOTION_LABEL) {
+    } else if (currentPhase === PHASE_LABEL.EMOTION_LABEL) {
         nextPhase = PHASE_LABEL.REFLECTION
+    } else if (currentPhase === PHASE_LABEL.REVISE_EMOTION_LABEL) {
+        nextPhase = PHASE_LABEL.REVISE_REFLECTION
     } else if (currentPhase === PHASE_LABEL.REFLECTION) {
         const result = await checkUserSatisfaction(diary, dialog)
         nextPhase = result.next_phase
-    } else if (currentPhase === PHASE_LABEL.REVISE_EMOTION_LABEL) {
+    } else if (currentPhase === PHASE_LABEL.REVISE_REFLECTION) {
         const result = await checkUserSatisfaction(diary, dialog)
         nextPhase = result.next_phase
     }
@@ -65,7 +67,7 @@ const chatbotConversation = async (req, res, next) => {
         );
         return next(_error);
     }
-    /* END: Check criteria in current phase */
+    /* END: Check criteria in current phase, define the next phase */
 
     console.log("nextPhase", nextPhase)
 
@@ -84,13 +86,20 @@ const chatbotConversation = async (req, res, next) => {
         response.analysis = result.analysis
     } 
     else if (nextPhase === PHASE_LABEL.REFLECTION) {
-        const result = await generateReflectionFromMemory(userid, diaryid, diary, dialog, emotions)
+        const result = await generateEmotionReflection(userid, diaryid, diary, dialog, emotions)
         error = result.error
         response.phase = result.phase
         response.content = result.content
     } 
     else if (nextPhase === PHASE_LABEL.REVISE_EMOTION_LABEL) {
         const result = await reviseEmotionClassification(diary, dialog, userid)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+        response.analysis = result.analysis
+    }
+    else if (nextPhase === PHASE_LABEL.REVISE_REFLECTION) {
+        const result = await reviseEmotionReflection(userid, diaryid, diary, dialog, emotions)
         error = result.error
         response.phase = result.phase
         response.content = result.content
@@ -351,5 +360,4 @@ const generateWeeklySummary = async (req, res, next) => {
 module.exports = {
     chatbotConversation,
     generateWeeklySummary,
-    checkUserSatisfaction
 }

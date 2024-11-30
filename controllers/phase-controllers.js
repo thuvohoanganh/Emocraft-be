@@ -160,7 +160,7 @@ Response must be JSON format:
     return response
 }
 
-const generateReflectionFromMemory = async (userid, diaryid, diary, dialog, emotions) => {
+const generateEmotionReflection = async (userid, diaryid, diary, dialog, emotions) => {
     const response = {
         error: "",
         phase: PHASE_LABEL.REFLECTION,
@@ -179,8 +179,10 @@ Use previous diaries with similar emotion or similar context to current diary. F
 Based on previous diaries, identify whether the user has experienced similar emotions or been in similar contexts, and provide an explanation that allows the user to reflect on their current emotion based on those experiences.
 Response should be no longer than 200 words.
 Your response to user should be as second person pronoun "you".
-${emotions? `Emotions in current diary: ${JSON.stringify(emotions)}` : ""}
-${retrievedDiaries.length > 0? `Previous diaries have similar context: ${JSON.stringify(retrievedDiaries)}` : ""}
+${emotions? `
+Emotions in current diary: ${JSON.stringify(emotions)}` : ""}
+${retrievedDiaries.length > 0? `
+Previous diaries have similar context: ${JSON.stringify(retrievedDiaries)}` : ""}
 ${emotionRelevantDiaries.length > 0? `Previous diaries have similar emotions: ${JSON.stringify(emotionRelevantDiaries)}` : ""}
 
 Paragraph 2:
@@ -189,7 +191,7 @@ Since your analysis may not always be accurate, encourage user’s feedback abou
 
     console.log("task_instruction", task_instruction)
 
-    const _res = await generateResponse(diary, dialog.slice(-3), task_instruction)
+    const _res = await generateResponse(diary, [], task_instruction)
 
     if (_res) {
         response.content = _res
@@ -234,7 +236,6 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
                 })
             }
         })
-        // console.log("contextRelevantDiary", contextRelevantDiary)
 
         let topThree = []
         if (contextRelevantDiary.length > 0) {
@@ -249,7 +250,7 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
                 time_of_day: e.time_of_day,
             }))
         }
-        // console.log("topThree context", topThree)
+        console.log("topThree context", topThree)
     } catch (err) {
         err && console.error(err);
         return results
@@ -381,13 +382,48 @@ const reviseEmotionClassification = async (diary, dialog, userid) => {
     return response
 }
 
+const reviseEmotionReflection = async (userid, diaryid, diary, dialog, emotions) => {
+    const response = {
+        error: "",
+        phase: PHASE_LABEL.REVISE_REFLECTION,
+        content: "",
+    }
+    const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
+    const emotionRelevantDiaries = await retrieveRelevantDiaryByEmotion(userid, diaryid, emotions)
+
+    if (!retrievedDiaries.length && !emotionRelevantDiaries.length) return response
+
+    let task_instruction = `You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
+You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
+
+Paragraph 1:
+Use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
+Based on previous diaries, identify whether the user has experienced similar emotions or been in similar contexts, and provide an explanation that allows the user to reflect on their current emotion based on those experiences.
+Response should be no longer than 200 words.
+Your response to user should be as second person pronoun "you".
+${emotions? `Emotions in current diary: ${JSON.stringify(emotions)}` : ""}
+${retrievedDiaries.length > 0? `Previous diaries have similar context: ${JSON.stringify(retrievedDiaries)}` : ""}
+${emotionRelevantDiaries.length > 0? `Previous diaries have similar emotions: ${JSON.stringify(emotionRelevantDiaries)}` : ""}
+`
+
+    const _res = await generateResponse(diary, dialog, task_instruction)
+
+    if (_res) {
+        response.content = _res
+        response.content = response.content?.replace(/^\"+|\"+$/gm, '')
+    }
+
+    return response
+}
+
+
 const checkUserSatisfaction = async (diary, dialog) => {
     const response = {
         error: "",
         next_phase: PHASE_LABEL.REVISE_EMOTION_LABEL
     }
 
-    const instruction = `- You are a helpful assistant that analyzes the content of the dialog history. If the last user'response agree with your emotion analysis, return true. If they don't, return false.`
+    const instruction = `- You are a helpful assistant that analyzes the content of the dialog history. If the last user'response totally agree with your emotion analysis and the emotions you said are the same with what user is feeling, then return true. If they don't, return false.`
 
     const _res = await generateAnalysis(diary, dialog, instruction)
     console.log("checkUserSatisfaction", _res)
@@ -549,8 +585,9 @@ module.exports = {
     checkCriteriaExplorePhase,
     askMissingInfor,
     reviseEmotionClassification,
+    reviseEmotionReflection,
     classifyEmotion,
-    generateReflectionFromMemory,
+    generateEmotionReflection,
     categorizeContext,
     checkUserSatisfaction,
     generateGoodbye
