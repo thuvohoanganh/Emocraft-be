@@ -17,6 +17,7 @@
     - [Retrieve all Diary Entries of a User](#retrieve-all-diary-entries)
     - [Update a Diary Entry](#update-a-diary-entry)
     - [Delete a Diary Entry](#delete-a-diary-entry)
+    - [Generate Weekly Summary](#generate-weekly-summary)
 
 ## ChatGPT API
 
@@ -224,3 +225,12 @@
 - `400 User does not exist`: There is no user associated with the user id
 - `400 Diary does not exist`: There is no diary entry associated with the diary id
 - `200 OK`: The diary is deleted
+
+### Generate Weekly Entries Summary
+
+#### Endpoint: `/api/chatgpt/weekly-summary(user id)`
+
+- **Description**: Get weekly summary for the entries in a week
+- **Request Type**: POST
+
+#### Responses

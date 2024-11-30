@@ -32,7 +32,7 @@ const SummarySchema = new mongoose.Schema({
         required: true
     },
     diaryEntries: {
-        type: String,
+        type: [String],
         required: false
     }
 })

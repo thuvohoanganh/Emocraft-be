@@ -15,6 +15,8 @@ const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
 const { EMOTION_LIST } = require("../constant");
 const Statistic = require('../models/statistic');
+const chalk = require('chalk');
+
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -125,114 +127,48 @@ const checkUserExists = async (userId) => {
 };
 
 // weekly summary
-const generateWeeklySummary = async (req, res, next) => {
-    const { uid } = req.params;
+const generateWeeklySummary = async (uid, startDate, endDate) => {
+    // print params, recheck if the params are correct
+    // console.log('generateWeeklySummary params:', startDate, endDate);
+    // console.log('\n');
 
-    try {
-        await checkUserExists(uid);
-    } catch (err) {
-        return next(err);
-    }
-
-    // Get the range of date for the week
-    let today = new Date();
-    let lastMonday, lastSunday;
-
-    lastMonday = new Date(today);
-    lastSunday = new Date(today);
-    
-    if (today.getDay() === 0) {
-        lastMonday.setDate(today.getDate() - 7 - 6);
-        // lastMonday.setDate(today.getDate() - 7);
-    } else {
-        lastMonday.setDate(today.getDate() - today.getDay() - 6);
-        // lastMonday.setDate(today.getDate() - today.getDay());
-    }
-
-    lastMonday.setHours(0, 0, 0, 0);
-    lastSunday.setDate(lastMonday.getDate() + 6);
-    lastSunday.setHours(23, 59, 59, 999);    
-
-    // Get the diary entries for the week
-    let diaries;
-    try {
-        diaries = await Diary.find({
-            userid: uid,
-            timestamp: { $gte: lastMonday, $lte: lastSunday }
-        });
-
-        diaries.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    } catch (err) {
-        err && console.log(err);
-        const error = new HttpError(
-            'Fetching diaries failed, please try again later.',
-            500
-        );
-        return next(error);
-    }
-
-    if (!diaries || diaries.length === 0) {
-        const newSummary = new Summary({
-            userid: uid,
-            content: "You didn't write anything last week",
-            startdate: lastMonday.toISOString(),
-            enddate: lastSunday.toISOString(),
-            dailyEmotions: {},
-            //TO-DO: REPRESENT EMOTIONS THAT SHOWS USING BAR CHART?
-            emotionPercentages: {},
-            weeklyEmotions: []
-        });
-    
-        try {
-            await newSummary.save();
-        } catch (err) {
-            console.error(err)
-            return next(new HttpError('Saving summary failed, please try again later.', 500));
-        }
-    
-        return res.status(200).json(newSummary);
+    const diaries = await getWeeklyEntries(uid, startDate, endDate);
+    if (!diaries || diaries.length < 3) {
+        return {
+            content: "Not enough diary entries for the week",
+        };
     }
 
     const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-    // Processing the emotions
-    //TOOD: ADJUST THE EMOTION REPRESENTATION
     const dailyTopEmotions = {};
-    // const emotionList = await getEmotionList(uid);
-    const totalEmotions = {}
+    const totalEmotions = {};
 
-    // console.log("Getting emotions summary...\n");
     diaries.forEach(diary => {
         const day = dayMap[new Date(diary.timestamp).getDay()];
-        // console.log(`day: ${day}\n`);
-        const emotions = diary.emotions; // Directly use the `emotions` array from the diary structure.
-    
+        const emotions = diary.emotions;
+
         if (!Array.isArray(emotions)) {
             console.error(`Invalid emotions format for diary entry on ${diary.timestamp}`);
-            return; // Skip this diary entry if `emotions` is not an array.
+            return;
         }
 
-        dailyTopEmotions[day] = emotions;
-    
-        // Add the emotions to the daily and total emotion counts
-        emotions.forEach(emotion => {
-            if (totalEmotions[emotion]) {
-                totalEmotions[emotion] += 1;
-            } else {
-                totalEmotions[emotion] = 1;
-            }
-        });
+        dailyTopEmotions[day] = emotions.filter(emotion => EMOTION_LIST.includes(emotion));
+
+        if (emotions) {
+            emotions.forEach(emotion => {
+                if (emotion != "[]") {
+                    if (totalEmotions[emotion]) {
+                        totalEmotions[emotion] += 1;
+                    } else {
+                        totalEmotions[emotion] = 1;
+                    }
+        }});
+        }
     });
-    
-    // Log total emotions
-    // console.log('totalEmotions:', totalEmotions);
-    // console.log('dailyTopEmotions:', dailyTopEmotions);
 
-
-    // Calculate percentage for each emotion
     const totalIntensity = Object.values(totalEmotions).reduce((sum, val) => sum + val, 0);
     const emotionPercentages = {};
-    
+
     if (totalIntensity > 0) {
         for (const emotion in totalEmotions) {
             const value = totalEmotions[emotion];
@@ -241,14 +177,13 @@ const generateWeeklySummary = async (req, res, next) => {
             }
         }
     }
-
-    console.log('emotionPercentages:', emotionPercentages);
-
-    // Summarize the diary entries
+    
     const contentToSummarize = diaries.map(diary => {
-        const date = new Date(diary.timestamp).toLocaleString(); 
+        const date = new Date(diary.timestamp).toLocaleString();
         return `On ${date}: ${diary.content}`;
     }).join("\n\n");
+
+    contentIDs = diaries.map(diary => diary._id);
 
     let summary;
     const user = await User.findById(uid);   
@@ -256,36 +191,20 @@ const generateWeeklySummary = async (req, res, next) => {
         throw new Error('User not found');
     }
 
-    let existingSummary;
-    try {
-        existingSummary = await Summary.findOne({
-            userid: uid,
-            startdate: { $gte: lastMonday },
-            enddate: { $lte: lastSunday },
-            diaryEntries: contentToSummarize.trim() // Check if the same contentToSummarize exists
-        });
-    } catch (err) {
-        console.error(err);
-        return next(new HttpError('Fetching existing summary failed, please try again later.', 500));
-    }
-
-    if (existingSummary) {
-        // console.log("Existing summary found with matching content:", existingSummary);
-        return res.status(200).json(existingSummary);
-    }
-
-    // console.log("user:", user);
+    // SANITY CHECK FOR GENERATING SUMMARY
+    // console.log(`Summarizing entries from ${startDate} to ${endDate}`);
+    // console.log('Diary entries:', contentToSummarize);
+    // console.log(`Generating summary......\n`);
 
     try {
         const response = await openai.chat.completions.create({
             messages: [{
                 role: "user",
-                content: 
-                `
+                content: `
                     - You are a helpful assistant that analyzes the content of diary entries.
                     - Given the diary entries for the past week, summarizes the experiences and emotions into a coherent paragraph.
-                    - Start with a general but speific observation about the week's overall trend. Be concise in your summary.
-                    - Use a third person view to for the summary and avoid including dates and times. Mention the user's name: ${user.name}.
+                    - Start with a general but specific observation about the week's overall trend. Be concise in your summary.
+                    - Use a third person view for the summary and avoid including dates and times. Mention the user's name: ${user.name}.
                     - Here are the diary entries: ${contentToSummarize}
                 `
             }],
@@ -295,43 +214,134 @@ const generateWeeklySummary = async (req, res, next) => {
         summary = response.choices[0].message.content.trim();
     } catch (err) {
         console.error(err);
-        const error = new HttpError(
-            'Summarizing diaries failed, please try again later.',
-            500
-        );
-        return next(error);
+        throw new Error('Summarizing diaries failed, please try again later.');
     }
 
     const newSummary = new Summary({
         userid: uid,
         content: summary,
-        startdate: lastMonday.toISOString(),
-        enddate: lastSunday.toISOString(),
+        startdate: startDate,
+        enddate: endDate,
         dailyEmotions: dailyTopEmotions,
         emotionPercentages: emotionPercentages,
-        weeklyEmotions: Object.keys(totalEmotions),
-        diaryEntries: contentToSummarize,
+        weeklyEmotions: Object.keys(emotionPercentages),
+        diaryEntries: contentIDs,
     });
 
     try {
         await newSummary.save();
+        console.log('Successfully saved new weekly summary');
     } catch (err) {
-        console.error(err)
-        return next(new HttpError('Saving summary failed, please try again later.', 500));
+        console.error(err);
+        throw new Error('Saving summary failed, please try again later.');
     }
 
-    res.status(200).json(newSummary);
-};
-
-const getEmotionList = async (userid) => {
-    const emotions = await Statistic.distinct( "subcategory", { category: "emotion", userid: userid } )    
-    const presetEmotions = [...EMOTION_LIST.split(", ")]
-    const mergeList = presetEmotions.concat(emotions)
-    return [...new Set(mergeList)];
+    return newSummary;
 }
+
+
+const getWeeklyEntries = async ( uid, startDate, endDate ) => {
+    let diaries;
+    try {
+        diaries = await Diary.find({
+            userid: uid,
+            timestamp: { $gte: startDate, $lte: endDate }
+        });
+    
+        diaries.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    } catch (err) {
+        console.error('Error fetching diaries:', err);
+        throw new HttpError('Fetching diaries failed, please try again later.', 500);
+    }    
+
+    if (!diaries || diaries.length < 3) {
+        return null;
+    }
+
+    return diaries;
+}
+
+const checkAndFulfillSummary = async (req, res, next) => {
+    const uid = req.params.uid;
+
+    let oldestDiary, newestDiary;
+    try {
+        oldestDiary = await Diary.findOne({ userid: uid }).sort({ timestamp: 1 }).select('timestamp');
+        newestDiary = await Diary.findOne({ userid: uid }).sort({ timestamp: -1 }).select('timestamp');
+        console.log('oldestDiary:', oldestDiary);
+        console.log('newestDiary:', newestDiary);
+    } catch (err) {
+        console.error(err);
+        return next(new HttpError('Fetching diaries failed, please try again later.', 500));
+    }
+
+    if (!oldestDiary || !newestDiary) {
+        return next(new HttpError('No diaries found for the given user.', 404));
+    }
+
+    let curr = new Date(oldestDiary.timestamp);
+    const weekMarker = [new Date(curr)];
+
+    while (curr < newestDiary.timestamp) {
+        curr.setDate(curr.getDate() + 7);
+        if (curr < newestDiary.timestamp) {
+            weekMarker.push(new Date(curr));
+        }
+    }
+
+    console.log('weekMarker:', weekMarker);
+
+    for (let index = 0; index < weekMarker.length - 1; index++) {
+        const startDate = new Date(weekMarker[index]);
+        startDate.setHours(0, 0, 0, 0);
+
+        const endDate = new Date(weekMarker[index + 1]);
+        endDate.setDate(endDate.getDate() - 1);
+        endDate.setHours(23, 59, 59, 999);
+
+        let existingSummary;
+        try {
+            existingSummary = await Summary.findOne({
+                userid: uid,
+                startdate: { $gte: startDate },
+                enddate: { $lte: endDate }
+            });
+        } catch (err) {
+            console.error(err);
+            return next(new HttpError('Fetching existing summary failed, please try again later.', 500));
+        }
+
+        if (!existingSummary) {
+            console.log(chalk.bgRed(`Summary for week ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()} is missing`));
+            
+            // Call generateWeeklySummary to generate the summary
+            try {
+                const result = await generateWeeklySummary(uid, startDate.toISOString(), endDate.toISOString());
+                console.log(chalk.green('Generated summary:'), result);
+            } catch (error) {
+                console.error(error);
+                console.log(chalk.red('Error generating summary for week', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString()));
+            }
+        } else {
+            console.log(`${chalk.bgYellow(`Summary for week ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()} exists:`)} ${existingSummary.content}`);
+        }
+    }
+
+    // get all summaries
+    let summaries;
+    try {
+        summaries = await Summary.find({ userid: uid });
+    } catch (err) {
+        console.error(err);
+        return next(new HttpError('Fetching summaries failed, please try again later.', 500));
+    }
+
+    res.status(200).json(summaries);
+}
+
 
 module.exports = {
     chatbotConversation,
-    generateWeeklySummary,
+    checkAndFulfillSummary,
 }
 

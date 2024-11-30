@@ -488,7 +488,7 @@ const consolidate = async (req, res, next) => {
     }
     
     res.status(200).json({ message: 'Diary updated consolidateion' });
-} 
+}
 
 module.exports = {
     createDiary,

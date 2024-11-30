@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const chatgptController = require('../controllers/chatgpt-controllers');
-const { chatbotConversation, generateWeeklySummary } = chatgptController;
+const { chatbotConversation, checkAndFulfillSummary } = chatgptController;
 const { check } = require('express-validator');
 
 router.post('/emotions-recognition', [
@@ -13,6 +13,8 @@ router.post('/emotions-recognition', [
         .isEmpty(),
 ], chatbotConversation);
 
-router.get('/weekly-summary/:uid', generateWeeklySummary)
+// router.get('/weekly-summary/:uid', generateWeeklySummary)
+
+router.get('/weekly-summary/:uid', checkAndFulfillSummary)
 
 module.exports = router;
