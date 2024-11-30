@@ -3,7 +3,7 @@ const Statistic = require('../models/statistic');
 const User = require('../models/user');
 const HttpError = require('../models/http-error');
 const { validationResult } = require('express-validator');
-const { generateRationaleSummary, categorizeContext } = require('./phase-controllers');
+const { categorizeContext } = require('./phase-controllers');
 const { minmaxScaling } = require('../utils');
 
 const createDiary = async (req, res, next) => {
@@ -304,10 +304,10 @@ const encode = async (req, res, next) => {
         }
         if (emotions?.length > 0) {
             emotions.forEach(async (e) => {
-                const contextFactor = await Statistic.findOne({ category: "emotion", subcategory: e, userid });
-                if (contextFactor) {
-                    contextFactor.quantity += 1;
-                    contextFactor.save();
+                const emotionFactor = await Statistic.findOne({ category: "emotion", subcategory: e, userid });
+                if (emotionFactor) {
+                    emotionFactor.quantity += 1;
+                    emotionFactor.save();
                 } else {
                     const newSubcategory = new Statistic({
                         category: "emotion",

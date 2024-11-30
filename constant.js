@@ -1,5 +1,3 @@
-const EMOTION_LIST = "calm, joy, delight, acceptance, trust, admiration, anxiety, fear, terror, distraction, surprise, amazement, unhappyness, sadness, heartbroken, tiredness, disgust, horror, annoyance, anger, overwhelmed, interest, anticipation, focus";
-// const EMOTION_LIST = "calm, joy, acceptance, trust, anxiety, fear, distraction, surprise, unhappyness, sadness, tiredness, disgust, annoyance, anger, interest, anticipation";
 
 const EMOTION_LABEL = {
     SERENITY: "calm",
@@ -26,26 +24,54 @@ const EMOTION_LABEL = {
     INTEREST: "interest",
     ANTICIPATION: "anticipation",
     VIGILANCE: "focus",
-    LOVE: "love",
-    SUBMISSION: "submission",
-    AWE: "shock",
-    DISAPPROVAL: "disapproval",
-    REMORSE: "guilt",
-    CONTEMPT: "contempt",
-    AGGRESSIVENESS: "aggressiveness",
-    OPTIMISM: "optimism"
+    // LOVE: "love",
+    // SUBMISSION: "submission",
+    // AWE: "shock",
+    // DISAPPROVAL: "disapproval",
+    // REMORSE: "guilt",
+    // CONTEMPT: "contempt",
+    // AGGRESSIVENESS: "aggressiveness",
+    // OPTIMISM: "optimism"
 };
+
+const EMOTION_DIMENSION = {
+    [EMOTION_LABEL.SERENITY]: 1,
+    [EMOTION_LABEL.JOY]: 1,
+    [EMOTION_LABEL.ECSTASY]: 1,
+    [EMOTION_LABEL.ACCEPTANCE]: 2,
+    [EMOTION_LABEL.ADMIRATION]: 2,
+    [EMOTION_LABEL.TRUST]: 2,
+    [EMOTION_LABEL.FEAR]: 3,
+    [EMOTION_LABEL.APPREHENSION]: 3,
+    [EMOTION_LABEL.TERROR]: 3,
+    [EMOTION_LABEL.AMAZEMENT]: 4,
+    [EMOTION_LABEL.SURPRISE]: 4,
+    [EMOTION_LABEL.DISTRACTION]: 4,
+    [EMOTION_LABEL.PENSIVENESS]: 5,
+    [EMOTION_LABEL.SADNESS]: 5,
+    [EMOTION_LABEL.GRIEF]: 5,
+    [EMOTION_LABEL.BOREDOM]:6,
+    [EMOTION_LABEL.DISGUST]: 6,
+    [EMOTION_LABEL.LOATHING]: 6,
+    [EMOTION_LABEL.ANNOYANCE]: 7,
+    [EMOTION_LABEL.ANGER]: 7,
+    [EMOTION_LABEL.RAGE]: 7,
+    [EMOTION_LABEL.INTEREST]: 8,
+    [EMOTION_LABEL.ANTICIPATION]: 8,
+    [EMOTION_LABEL.VIGILANCE]: 8,
+}
 
 const PHASE_LABEL = {
     BEGINNING: "beginning",
-    FULLFILL: "fulfill",
-    CONTEXT_RETRIEVAL: "context_retrieval",
-    EMOTION_RETRIEVAL: "emotion_retrieval",
-    FEEDBACK: "feedback",
+    EMOTION_LABEL: "fulfill",
+    REFLECTION: "context_retrieval",
+    REVISE_EMOTION_LABEL: "feedback",
+    REVISE_REFLECTION: "revise_reflection",
+    GOODBYE: "goodbye",
 }
 
 module.exports = {
-    EMOTION_LIST,
     EMOTION_LABEL,
     PHASE_LABEL,
+    EMOTION_DIMENSION
 }
