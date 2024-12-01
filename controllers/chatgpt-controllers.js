@@ -16,7 +16,6 @@ const {
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
 const { EMOTION_LIST } = require("../constant");
-const Statistic = require('../models/statistic');
 const chalk = require('chalk');
 
 
@@ -227,16 +226,17 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
     try {
         const response = await openai.chat.completions.create({
             messages: [{
-                role: "user",
+                role: "system",
                 content: `
                     - You are a helpful assistant that analyzes the content of diary entries.
                     - Given the diary entries for the past week, summarizes the experiences and emotions into a coherent paragraph.
                     - Start with a general but specific observation about the week's overall trend. Be concise in your summary.
                     - Use a third person view for the summary and avoid including dates and times. Mention the user's name: ${user.name}.
+                    - Generate response in Korean.
                     - Here are the diary entries: ${contentToSummarize}
                 `
             }],
-            model: "gpt-3.5-turbo",
+            model: "gpt-4",
             temperature: 0,
         });
         summary = response.choices[0].message.content.trim();

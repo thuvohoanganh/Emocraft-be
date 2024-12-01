@@ -13,8 +13,6 @@ router.post('/emotions-recognition', [
         .isEmpty(),
 ], chatbotConversation);
 
-// router.get('/weekly-summary/:uid', generateWeeklySummary)
-
 router.get('/weekly-summary/:uid', checkAndFulfillSummary)
 
 module.exports = router;
