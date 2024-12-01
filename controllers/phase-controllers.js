@@ -97,7 +97,7 @@ const askMissingInfor = async (diary, dialog, summary) => {
         ) : !summary.time_of_day ? (
             `- Guess the key event happened at what time of day (e.g morning, noon, evening, night) and ask user if it is right.`
         ) : ""}
-    - User is a Korean, use Korean to response them.
+    - User can use English or Korean, response to the user in their language.
     - Response should be less than 50 words.
     - Ask only one question.
     ${GENERAL_SPEAKING_RULES}
@@ -130,7 +130,7 @@ Answer that the emotions you put in emotion property are included in emotion lis
 Use English for this property
 ### content
 Explain to user why you think user have emotions that listed in the analysis property. Your response should be shorter than 100 words.
-User is a Korean, use Korean to response them.
+User can use English or Korean, response to the user in their language.
 
 Response must be JSON format:
 {
@@ -176,7 +176,7 @@ const generateEmotionReflection = async (userid, diaryid, diary, dialog, emotion
 
     let task_instruction = `You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
 You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
-User is a Korean, use Korean to response them.
+User can use English or Korean, response to the user in their language.
 
 Paragraph 1:
 Use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
@@ -350,7 +350,7 @@ const reviseEmotionClassification = async (diary, dialog, userid) => {
     Don't use third person pronoun. 
     Never return array of emotions in this properties.
     Your response should be shorter than 50 words.
-    User is a Korean, use Korean to response them.
+    User can use English or Korean, response to the user in their language.
     ## rationale
     reason how you generate analysis properties. The emotions you put in analysis are included in emotion list or not.
     
@@ -404,7 +404,7 @@ const reviseEmotionReflection = async (userid, diaryid, diary, dialog, emotions)
 
     let task_instruction = `You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
 You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
-User is a Korean, use Korean to response them.
+User can use English or Korean, response to the user in their language.
 
 Use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
 Based on previous diaries, identify whether the user has experienced similar emotions or been in similar contexts, and provide an explanation that allows the user to reflect on their current emotion based on those experiences.
@@ -450,7 +450,7 @@ const checkUserSatisfaction = async (diary, dialog) => {
 }
 
 const generateGoodbye = async (diary, dialog) => {
-    const instruction = `User expressed they are satisfied with your analysis about their emotion. Say thank and tell them to click Finish button on the top screen to finish section. Response should be shorter than 50 words. User is a Korean, use Korean to response them.`
+    const instruction = `User expressed they are satisfied with your analysis about their emotion. Say thank and tell them to click Finish button on the top screen to finish section. Response should be shorter than 50 words. User can use English or Korean, response to the user in their language.`
     const response = {
         error: "",
         phase: PHASE_LABEL.GOODBYE,

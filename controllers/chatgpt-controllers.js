@@ -231,7 +231,7 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
                     - Given the diary entries for the past week, summarizes the experiences and emotions into a coherent paragraph.
                     - Start with a general but specific observation about the week's overall trend. Be concise in your summary.
                     - Use a third person view for the summary and avoid including dates and times. Mention the user's name: ${user.name}.
-                    - Generate response in Korean.
+                    - Diaries owner can use English or Korean, generate response in the language that is the same as diary entries.
                     - Here are the diary entries: ${contentToSummarize}
                 `
             }],
