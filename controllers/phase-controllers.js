@@ -192,10 +192,14 @@ ${emotionRelevantDiaries.length > 0? `Previous diaries have similar emotions: ${
 Paragraph 2:
 Since your analysis may not always be accurate, encourage user’s feedback about emotional classification and reasoning. Separate with the paragraph 1 by a line break. The length of this paragraph should be shorter than 100 words.
 
-Respoonse example:
+Response example in Korean:
 감정이 주를 이루고 있습니다. 이전에도 비슷한 상황에서 연구의 진전이나 친구들과의 즐거운 시간을 보내며 같은 감정을 느꼈던 것으로 보입니다. 특히, 연구에서 새로운 진전이 있을 때나 편안한 환경에서 시간을 보낼 때 '기쁨'과 '평온함'이라는 감정이 동시에 느껴졌습니다. 이런 경험들을 통해 현재의 감정이 어떤 상황에서 오는지, 그리고 어떤 감정이 자주 반복되는지를 파악하실 수 있을 것입니다.\n" +
 '\n'
 '제 분석이 항상 정확하지는 않을 수 있습니다. 따라서 사용자님의 피드백을 통해 감정 분류와 추론 과정을 더욱 개선해 나갈 수 있도록 도와주시면 감사하겠습니다.'
+Response example in English:
+"The main focus is on emotions. It seems that in similar situations before, you experienced the same feelings while making progress in your research or spending enjoyable time with friends. In particular, emotions such as "joy" and "calmness" were simultaneously felt when there were new advancements in research or when you spent time in a comfortable environment.\n" +
+'\n'
+'My analysis may not always be entirely accurate. Therefore, I would greatly appreciate your feedback to help improve the process of classifying and inferring emotions.'
 `
 
     // console.log("task_instruction", task_instruction)
