@@ -5,6 +5,7 @@ const cors = require('cors');
 const userRoutes = require('./routes/user-routes');
 const chatgptRoutes = require('./routes/chatgpt-routes');
 const diaryRoutes = require('./routes/diary-routes.js');
+const userSimulatorRoutes = require('./routes/user-simulator-routes.js');
 const HttpError = require('./models/http-error');
 const bodyParse = require('body-parser');
 const app = express();
@@ -37,6 +38,8 @@ app.use('/api/chatgpt', chatgptRoutes);
 
 app.use('/api/diary', diaryRoutes);
 
+app.use('/api/user-simulator', userSimulatorRoutes);
+
 app.use((req, res, next) => {
   const error = new HttpError('Could not find this route.', 404);
   throw error;
@@ -54,9 +57,8 @@ app.use((error, req, res, next) => {
   });
 });
 
-const DB_CONNECT_STRING = `mongodb+srv://${process.env.MONGODB_ICLAB_USERNAME}:${(process.env.MONGODB_ICLAB_PASSWORD)}@cluster0.hwlfqv1.mongodb.net/diary?retryWrites=true&w=majority&appName=Cluster0`
 mongoose
-  .connect(DB_CONNECT_STRING)
+  .connect(process.env.MONGODB_ICLAB_CONNECTION)
   .then(() => {
     app.listen(process.env.PORT || 8000);
   })

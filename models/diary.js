@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
 
 const DiarySchema = new mongoose.Schema({
     userid: {
@@ -11,22 +10,38 @@ const DiarySchema = new mongoose.Schema({
         required: true
     },
     content: {
-        type: String
+        type: String,
+        required: true
     },
     emotions: {
         type: [String]
     },
-    people: {
-        type: [String]
-    },
-    location: {
-        type: String
-    },
     dialog: {
         type: String //stringify the JSON dialog
     },
-    images: {
-        type: [String]
+    people: {
+        type: String,
+    },
+    location: {
+        type: String,
+    },
+    activity: {
+        type: String,
+    },
+    time_of_day: {
+        type: String,
+    },
+    frequency: {
+        type: Number,
+        default: 0
+    },
+    emotion_retention: {
+        type: Number,
+        default: 0
+    },
+    context_retention: {
+        type: Number,
+        default: 0
     },
     createdAt: {
         type: Date,
