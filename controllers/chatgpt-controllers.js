@@ -358,7 +358,7 @@ const checkAndFulfillSummary = async (req, res, next) => {
     // get all summaries
     let summaries;
     try {
-        summaries = await Summary.find({ userid: uid });
+        summaries = await Summary.find({ userid: uid }).sort({ startdate: -1 });
     } catch (err) {
         console.error(err);
         return next(new HttpError('Fetching summaries failed, please try again later.', 500));
