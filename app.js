@@ -57,7 +57,6 @@ app.use((error, req, res, next) => {
   });
 });
 
-mongoose.set('strictQuery', true);
 mongoose
   .connect(process.env.MONGODB_ICLAB_CONNECTION)
   .then(() => {
