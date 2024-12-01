@@ -11,10 +11,13 @@ const {
     reviseEmotionReflection,
     classifyEmotion,
     generateEmotionReflection,
-    generateGoodbye
+    generateGoodbye,
+    getEmotionList
 } = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
+const chalk = require('chalk');
+
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -151,151 +154,47 @@ const checkUserExists = async (userId) => {
 };
 
 // weekly summary
-const generateWeeklySummary = async (req, res, next) => {
-    const { uid } = req.params;
+const generateWeeklySummary = async (uid, startDate, endDate) => {
+    // print params, recheck if the params are correct
+    // console.log('generateWeeklySummary params:', startDate, endDate);
+    // console.log('\n');
 
-    try {
-        await checkUserExists(uid);
-    } catch (err) {
-        return next(err);
-    }
-
-    let today = new Date();
-    let lastMonday, lastSunday;
-
-    // Calculate the last Monday and last Sunday
-    lastMonday = new Date(today);
-    lastSunday = new Date(today);
-    
-    if (today.getDay() === 0) {
-        lastMonday.setDate(today.getDate() - 7 - 6);
-    } else {
-        lastMonday.setDate(today.getDate() - today.getDay() - 6);
-    }
-
-    lastMonday.setHours(0, 0, 0, 0);
-    lastSunday.setDate(lastMonday.getDate() + 6);
-    lastSunday.setHours(23, 59, 59, 999);
-
-    let existingSummary;
-    try {
-        existingSummary = await Summary.findOne({
-            userid: uid,
-            startdate: { $gte: lastMonday },
-            enddate: { $lte: lastSunday }
-        });
-    } catch (err) {
-        err && console.log(err);
-        return next(new HttpError('Fetching summary failed, please try again later.', 500));
-    }
-
-    // If summary already exists for the week, return it
-    if (existingSummary) {
-        return res.status(200).json(existingSummary);
-    }
-
-
-    let diaries;
-    try {
-        diaries = await Diary.find({
-            userid: uid,
-            timestamp: { $gte: lastMonday, $lte: lastSunday }
-        });
-
-        diaries.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    } catch (err) {
-        err && console.log(err);
-        const error = new HttpError(
-            'Fetching diaries failed, please try again later.',
-            500
-        );
-        return next(error);
-    }
-
-    if (!diaries || diaries.length === 0) {
-        const newSummary = new Summary({
-            userid: uid,
-            content: "You didn't write anything last week",
-            startdate: lastMonday.toISOString(),
-            enddate: lastSunday.toISOString(),
-            dailyEmotions: {},
-            emotionPercentages: { joy: 0, sadness: 0, disgust: 0, anger: 0, fear: 0, surprise: 0 },
-            weeklyEmotions: []
-        });
-    
-        try {
-            await newSummary.save();
-        } catch (err) {
-            console.error(err)
-            return next(new HttpError('Saving summary failed, please try again later.', 500));
-        }
-    
-        return res.status(200).json(newSummary);
+    const diaries = await getWeeklyEntries(uid, startDate, endDate);
+    if (!diaries || diaries.length < 3) {
+        return null;
     }
 
     const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-    // Processing the emotions
     const dailyTopEmotions = {};
-    const totalEmotions = { joy: 0, sadness: 0, disgust: 0, anger: 0, fear: 0, surprise: 0 };
+    const totalEmotions = {};
+    const emotionList = await getEmotionList(uid);
 
     diaries.forEach(diary => {
-        const { emotions, timestamp } = diary;
-        const day = dayMap[new Date(timestamp).getDay()];
+        const day = dayMap[new Date(diary.timestamp).getDay()];
+        const emotions = diary.emotions;
 
-        let parsedEmotions;
-        try {
-            if (emotions) {
-                parsedEmotions = JSON.parse(emotions);
-            } else {
-                parsedEmotions = {}; 
-            }
-        } catch (err) {
-            console.error(`Failed to parse emotions for diary entry on ${timestamp}:`, err);
-            parsedEmotions = {};
+        if (!Array.isArray(emotions)) {
+            console.error(`Invalid emotions format for diary entry on ${diary.timestamp}`);
+            return;
         }
 
-        if (!dailyTopEmotions[day]) {
-            dailyTopEmotions[day] = { ...parsedEmotions };
-        } else {
-            // Aggregate emotions for the same day
-            for (const emotion in parsedEmotions) {
-                dailyTopEmotions[day][emotion] += parsedEmotions[emotion];
-            }
-        }
+        dailyTopEmotions[day] = emotions?.filter(emotion => emotionList.includes(emotion)) || [];
 
-        // Accumulate total emotions for the week
-        for (const emotion in parsedEmotions) {
-            if (!isNaN(totalEmotions[emotion])) {
-                totalEmotions[emotion] += parsedEmotions[emotion];
-            }
+        if (emotions) {
+            emotions.forEach(emotion => {
+                if (emotion != "[]") {
+                    if (totalEmotions[emotion]) {
+                        totalEmotions[emotion] += 1;
+                    } else {
+                        totalEmotions[emotion] = 1;
+                    }
+        }});
         }
     });
 
-    console.log('totalEmotions:', totalEmotions);
-
-    // Determine top 2 emotions for each day
-    for (const day in dailyTopEmotions) {
-        const topTwo = Object.entries(dailyTopEmotions[day])
-            .filter(([, intensity]) => intensity > 0)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 2)
-            .map(([emotion]) => emotion);
-
-        dailyTopEmotions[day] = topTwo;
-    }
-
-    // Determine top 2 emotions for the entire week
-    const topTwoWeekly = Object.entries(totalEmotions)
-        .filter(([, intensity]) => intensity > 0)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 2)
-        .map(([emotion]) => emotion);
-
-    // Calculate percentage for each emotion
     const totalIntensity = Object.values(totalEmotions).reduce((sum, val) => sum + val, 0);
-    const emotionPercentages = {joy: 0, sadness: 0, disgust: 0, anger: 0, fear: 0, surprise: 0 };
-    
+    const emotionPercentages = {};
+
     if (totalIntensity > 0) {
         for (const emotion in totalEmotions) {
             const value = totalEmotions[emotion];
@@ -304,60 +203,199 @@ const generateWeeklySummary = async (req, res, next) => {
             }
         }
     }
-
-    console.log('emotionPercentages:', emotionPercentages);
-
-    // Summarize the diary entries
+    
     const contentToSummarize = diaries.map(diary => {
-        const date = new Date(diary.timestamp).toLocaleString(); // Format timestamp to a readable format
+        const date = new Date(diary.timestamp).toLocaleString();
         return `On ${date}: ${diary.content}`;
     }).join("\n\n");
 
+    contentIDs = diaries.map(diary => diary._id);
+
     let summary;
+    const user = await User.findById(uid);   
+    if (!user) {
+        throw new Error('User not found');
+    }
+
+    // SANITY CHECK FOR GENERATING SUMMARY
+    // console.log(`Summarizing entries from ${startDate} to ${endDate}`);
+    // console.log('Diary entries:', contentToSummarize);
+    // console.log(`Generating summary......\n`);
+
     try {
         const response = await openai.chat.completions.create({
             messages: [{
-                role: "user",
-                content: `I wrote some diary entries for this past week.
-                I want to understand my experiences and emotions better based on the diaries I wrote. 
-                Please summarize them into a coherent paragraph and tell me what emotions I felt and why in the third view.
-                Do not include any dates and time in the summary, try to make it short and easy to understand, and use you as the pronoun instead of I.
-                Ex: When work is hectic and Susan has a lot to do, she feels happy and proud, as seen in her recent entry where she described the day as reminiscent of the "good old days." She enjoys the feeling of being overwhelmed and productive, which brings her satisfaction and a sense of accomplishment.
-                Here are the entries:\n\n${contentToSummarize}`
+                role: "system",
+                content: `
+                    - You are a helpful assistant that analyzes the content of diary entries.
+                    - Given the diary entries for the past week, summarizes the experiences and emotions into a coherent paragraph.
+                    - Start with a general but specific observation about the week's overall trend. Be concise in your summary.
+                    - Use a third person view for the summary and avoid including dates and times. Mention the user's name: ${user.name}.
+                    - Generate response in Korean.
+                    - Here are the diary entries: ${contentToSummarize}
+                `
             }],
-            model: "gpt-3.5-turbo"
+            model: "gpt-4",
+            temperature: 0,
         });
         summary = response.choices[0].message.content.trim();
     } catch (err) {
         console.error(err);
-        const error = new HttpError(
-            'Summarizing diaries failed, please try again later.',
-            500
-        );
-        return next(error);
+        throw new Error('Summarizing diaries failed, please try again later.');
     }
 
     const newSummary = new Summary({
         userid: uid,
         content: summary,
-        startdate: lastMonday.toISOString(),
-        enddate: lastSunday.toISOString(),
+        startdate: startDate,
+        enddate: endDate,
         dailyEmotions: dailyTopEmotions,
         emotionPercentages: emotionPercentages,
-        weeklyEmotions: topTwoWeekly
+        weeklyEmotions: Object.keys(emotionPercentages),
+        diaryEntries: contentIDs,
     });
 
     try {
         await newSummary.save();
+        console.log('Successfully saved new weekly summary');
     } catch (err) {
-        console.error(err)
-        return next(new HttpError('Saving summary failed, please try again later.', 500));
+        console.error(err);
+        throw new Error('Saving summary failed, please try again later.');
     }
 
-    res.status(200).json(newSummary);
-};
+    return newSummary;
+}
+
+
+const getWeeklyEntries = async ( uid, startDate, endDate ) => {
+    let diaries;
+    try {
+        diaries = await Diary.find({
+            userid: uid,
+            timestamp: { $gte: startDate, $lte: endDate }
+        });
+    
+        diaries.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    } catch (err) {
+        console.error('Error fetching diaries:', err);
+        throw new HttpError('Fetching diaries failed, please try again later.', 500);
+    }    
+
+    if (!diaries || diaries.length < 3) {
+        return null;
+    }
+
+    return diaries;
+}
+
+const checkAndFulfillSummary = async (req, res, next) => {
+    const uid = req.params.uid;
+    let oldestDiary, newestDiary;
+    try {
+        oldestDiary = await Diary.findOne({ userid: uid }).sort({ timestamp: 1 }).select('timestamp');
+        newestDiary = await Diary.findOne({ userid: uid }).sort({ timestamp: -1 }).select('timestamp');
+        console.log('oldestDiary:', oldestDiary);
+        console.log('newestDiary:', newestDiary);
+    } catch (err) {
+        console.error(err);
+        return res.status(200).json([]);
+    }
+
+    if (!oldestDiary || !newestDiary) {
+        return res.status(200).json([]);
+    }
+
+    let curr = new Date(oldestDiary.timestamp);
+    const weekMarker = [new Date(curr)];
+
+    while (curr < newestDiary.timestamp) {
+        curr.setDate(curr.getDate() + 7);
+        if (curr < newestDiary.timestamp) {
+            weekMarker.push(new Date(curr));
+        }
+    }
+
+    console.log('weekMarker:', weekMarker);
+
+    for (let index = 0; index < weekMarker.length - 1; index++) {
+        const startDate = new Date(weekMarker[index]);
+        startDate.setHours(0, 0, 0, 0);
+
+        const endDate = new Date(weekMarker[index + 1]);
+        endDate.setDate(endDate.getDate() - 1);
+        endDate.setHours(23, 59, 59, 999);
+
+        let existingSummary;
+        try {
+            existingSummary = await Summary.findOne({
+                userid: uid,
+                startdate: { $gte: startDate },
+                enddate: { $lte: endDate }
+            });
+        } catch (err) {
+            console.error(err);
+            return res.status(200).json([]);
+        }
+
+        if (!existingSummary) {
+            console.log(chalk.bgRed(`Summary for week ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()} is missing`));
+            
+            // Call generateWeeklySummary to generate the summary
+            try {
+                const result = await generateWeeklySummary(uid, startDate.toISOString(), endDate.toISOString());
+                console.log(chalk.green('Generated summary:'), result);
+            } catch (error) {
+                console.error(error);
+                console.log(chalk.red('Error generating summary for week', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString()));
+            }
+        } else {
+            console.log(`${chalk.bgYellow(`Summary for week ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()} exists:`)} ${existingSummary.content}`);
+        }
+    }
+
+    let summaries = [];
+    try {
+        summaries = await Summary.find({ userid: uid });
+    } catch (err) {
+        console.error(err);
+        return res.status(200).json([]);
+    }
+    res.status(200).json(summaries);
+}
+
+const getWeeklySummaries = async (req, res, next) => {
+    const uid = req.params.uid;
+
+    // get all summaries
+    let summaries = [];
+    try {
+        summaries = await Summary.find({ userid: uid });
+    } catch (err) {
+        console.error(err);
+        return next(new HttpError('Fetching summaries failed, please try again later.', 500));
+    }
+
+    res.status(200).json(summaries);
+}
+
+const getWeeklySummary = async (req, res, next) => {
+    const id = req.params.id;
+
+    // get all summaries
+    let summary = null;
+    try {
+        summary = await Summary.findOne({ _id: id });
+    } catch (err) {
+        console.error(err);
+        return next(new HttpError('Fetching summaries failed, please try again later.', 500));
+    }
+
+    res.status(200).json(summary);
+}
 
 module.exports = {
     chatbotConversation,
-    generateWeeklySummary,
+    checkAndFulfillSummary,
+    getWeeklySummaries,
+    getWeeklySummary
 }

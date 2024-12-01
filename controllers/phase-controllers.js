@@ -198,7 +198,7 @@ Respoonse example:
 '제 분석이 항상 정확하지는 않을 수 있습니다. 따라서 사용자님의 피드백을 통해 감정 분류와 추론 과정을 더욱 개선해 나갈 수 있도록 도와주시면 감사하겠습니다.'
 `
 
-    console.log("task_instruction", task_instruction)
+    // console.log("task_instruction", task_instruction)
 
     const _res = await generateResponse(diary, [], task_instruction)
 
@@ -584,7 +584,7 @@ Use JSON format with the following properties:
 }
 
 const getEmotionList = async (userid) => {
-    const emotions = await Statistic.distinct("subcategory", { category: "emotion", userid: userid })
+    // const emotions = await Statistic.distinct("subcategory", { category: "emotion", userid: userid })
     const presetEmotions = Object.values(EMOTION_LABEL)
     const mergeList = presetEmotions
     // .concat(emotions)
@@ -600,6 +600,7 @@ module.exports = {
     generateEmotionReflection,
     categorizeContext,
     checkUserSatisfaction,
-    generateGoodbye
+    generateGoodbye,
+    getEmotionList
 }
 

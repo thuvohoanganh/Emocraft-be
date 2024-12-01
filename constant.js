@@ -1,4 +1,3 @@
-
 const EMOTION_LABEL = {
     SERENITY: "calm",
     JOY: "joy",

@@ -15,7 +15,8 @@ const SummarySchema = new mongoose.Schema({
     },
     enddate: { 
         type: Date, 
-        required: true },
+        required: true 
+    },
     dailyEmotions: { 
         type: Map,
         of: [String],
@@ -29,6 +30,10 @@ const SummarySchema = new mongoose.Schema({
     weeklyEmotions: {
         type: [String],
         required: true
+    },
+    diaryEntries: {
+        type: [String],
+        required: false
     }
 })
 
