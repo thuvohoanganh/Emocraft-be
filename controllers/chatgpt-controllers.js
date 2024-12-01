@@ -11,12 +11,11 @@ const {
     reviseEmotionReflection,
     classifyEmotion,
     generateEmotionReflection,
-    generateGoodbye
+    generateGoodbye,
+    getEmotionList
 } = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
-const { EMOTION_LIST } = require("../constant");
-const Statistic = require('../models/statistic');
 const chalk = require('chalk');
 
 
@@ -162,14 +161,13 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
 
     const diaries = await getWeeklyEntries(uid, startDate, endDate);
     if (!diaries || diaries.length < 3) {
-        return {
-            content: "Not enough diary entries for the week",
-        };
+        return null;
     }
 
     const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const dailyTopEmotions = {};
     const totalEmotions = {};
+    const emotionList = await getEmotionList(uid);
 
     diaries.forEach(diary => {
         const day = dayMap[new Date(diary.timestamp).getDay()];
@@ -180,7 +178,7 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
             return;
         }
 
-        dailyTopEmotions[day] = emotions.filter(emotion => EMOTION_LIST.includes(emotion));
+        dailyTopEmotions[day] = emotions?.filter(emotion => emotionList.includes(emotion)) || [];
 
         if (emotions) {
             emotions.forEach(emotion => {
@@ -227,16 +225,17 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
     try {
         const response = await openai.chat.completions.create({
             messages: [{
-                role: "user",
+                role: "system",
                 content: `
                     - You are a helpful assistant that analyzes the content of diary entries.
                     - Given the diary entries for the past week, summarizes the experiences and emotions into a coherent paragraph.
                     - Start with a general but specific observation about the week's overall trend. Be concise in your summary.
                     - Use a third person view for the summary and avoid including dates and times. Mention the user's name: ${user.name}.
+                    - Diaries owner can use English or Korean, generate response in the language that is the same as diary entries.
                     - Here are the diary entries: ${contentToSummarize}
                 `
             }],
-            model: "gpt-3.5-turbo",
+            model: "gpt-4",
             temperature: 0,
         });
         summary = response.choices[0].message.content.trim();
@@ -291,7 +290,6 @@ const getWeeklyEntries = async ( uid, startDate, endDate ) => {
 
 const checkAndFulfillSummary = async (req, res, next) => {
     const uid = req.params.uid;
-
     let oldestDiary, newestDiary;
     try {
         oldestDiary = await Diary.findOne({ userid: uid }).sort({ timestamp: 1 }).select('timestamp');
@@ -300,11 +298,11 @@ const checkAndFulfillSummary = async (req, res, next) => {
         console.log('newestDiary:', newestDiary);
     } catch (err) {
         console.error(err);
-        return next(new HttpError('Fetching diaries failed, please try again later.', 500));
+        return res.status(200).json([]);
     }
 
     if (!oldestDiary || !newestDiary) {
-        return next(new HttpError('No diaries found for the given user.', 404));
+        return res.status(200).json([]);
     }
 
     let curr = new Date(oldestDiary.timestamp);
@@ -336,7 +334,7 @@ const checkAndFulfillSummary = async (req, res, next) => {
             });
         } catch (err) {
             console.error(err);
-            return next(new HttpError('Fetching existing summary failed, please try again later.', 500));
+            return res.status(200).json([]);
         }
 
         if (!existingSummary) {
@@ -355,8 +353,21 @@ const checkAndFulfillSummary = async (req, res, next) => {
         }
     }
 
+    let summaries = [];
+    try {
+        summaries = await Summary.find({ userid: uid });
+    } catch (err) {
+        console.error(err);
+        return res.status(200).json([]);
+    }
+    res.status(200).json(summaries);
+}
+
+const getWeeklySummaries = async (req, res, next) => {
+    const uid = req.params.uid;
+
     // get all summaries
-    let summaries;
+    let summaries = [];
     try {
         summaries = await Summary.find({ userid: uid }).sort({ startdate: -1 });
     } catch (err) {
@@ -367,8 +378,24 @@ const checkAndFulfillSummary = async (req, res, next) => {
     res.status(200).json(summaries);
 }
 
+const getWeeklySummary = async (req, res, next) => {
+    const id = req.params.id;
+
+    // get all summaries
+    let summary = null;
+    try {
+        summary = await Summary.findOne({ _id: id });
+    } catch (err) {
+        console.error(err);
+        return next(new HttpError('Fetching summaries failed, please try again later.', 500));
+    }
+
+    res.status(200).json(summary);
+}
 
 module.exports = {
     chatbotConversation,
     checkAndFulfillSummary,
+    getWeeklySummaries,
+    getWeeklySummary
 }

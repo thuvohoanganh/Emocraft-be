@@ -97,7 +97,7 @@ const askMissingInfor = async (diary, dialog, summary) => {
         ) : !summary.time_of_day ? (
             `- Guess the key event happened at what time of day (e.g morning, noon, evening, night) and ask user if it is right.`
         ) : ""}
-    - User is a Korean, use Korean to response them.
+    - User can use English or Korean, response to the user in their language.
     - Response should be less than 50 words.
     - Ask only one question.
     ${GENERAL_SPEAKING_RULES}
@@ -130,7 +130,7 @@ Answer that the emotions you put in emotion property are included in emotion lis
 Use English for this property
 ### content
 Explain to user why you think user have emotions that listed in the analysis property. Your response should be shorter than 100 words.
-User is a Korean, use Korean to response them.
+User can use English or Korean, response to the user in their language.
 
 Response must be JSON format:
 {
@@ -176,7 +176,7 @@ const generateEmotionReflection = async (userid, diaryid, diary, dialog, emotion
 
     let task_instruction = `You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
 You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
-User is a Korean, use Korean to response them.
+User can use English or Korean, response to the user in their language.
 
 Paragraph 1:
 Use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
@@ -192,13 +192,17 @@ ${emotionRelevantDiaries.length > 0? `Previous diaries have similar emotions: ${
 Paragraph 2:
 Since your analysis may not always be accurate, encourage user’s feedback about emotional classification and reasoning. Separate with the paragraph 1 by a line break. The length of this paragraph should be shorter than 100 words.
 
-Respoonse example:
+Response example in Korean:
 감정이 주를 이루고 있습니다. 이전에도 비슷한 상황에서 연구의 진전이나 친구들과의 즐거운 시간을 보내며 같은 감정을 느꼈던 것으로 보입니다. 특히, 연구에서 새로운 진전이 있을 때나 편안한 환경에서 시간을 보낼 때 '기쁨'과 '평온함'이라는 감정이 동시에 느껴졌습니다. 이런 경험들을 통해 현재의 감정이 어떤 상황에서 오는지, 그리고 어떤 감정이 자주 반복되는지를 파악하실 수 있을 것입니다.\n" +
 '\n'
 '제 분석이 항상 정확하지는 않을 수 있습니다. 따라서 사용자님의 피드백을 통해 감정 분류와 추론 과정을 더욱 개선해 나갈 수 있도록 도와주시면 감사하겠습니다.'
+Response example in English:
+"The main focus is on emotions. It seems that in similar situations before, you experienced the same feelings while making progress in your research or spending enjoyable time with friends. In particular, emotions such as "joy" and "calmness" were simultaneously felt when there were new advancements in research or when you spent time in a comfortable environment.\n" +
+'\n'
+'My analysis may not always be entirely accurate. Therefore, I would greatly appreciate your feedback to help improve the process of classifying and inferring emotions.'
 `
 
-    console.log("task_instruction", task_instruction)
+    // console.log("task_instruction", task_instruction)
 
     const _res = await generateResponse(diary, [], task_instruction)
 
@@ -350,7 +354,7 @@ const reviseEmotionClassification = async (diary, dialog, userid) => {
     Don't use third person pronoun. 
     Never return array of emotions in this properties.
     Your response should be shorter than 50 words.
-    User is a Korean, use Korean to response them.
+    User can use English or Korean, response to the user in their language.
     ## rationale
     reason how you generate analysis properties. The emotions you put in analysis are included in emotion list or not.
     
@@ -404,7 +408,7 @@ const reviseEmotionReflection = async (userid, diaryid, diary, dialog, emotions)
 
     let task_instruction = `You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
 You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
-User is a Korean, use Korean to response them.
+User can use English or Korean, response to the user in their language.
 
 Use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
 Based on previous diaries, identify whether the user has experienced similar emotions or been in similar contexts, and provide an explanation that allows the user to reflect on their current emotion based on those experiences.
@@ -450,7 +454,7 @@ const checkUserSatisfaction = async (diary, dialog) => {
 }
 
 const generateGoodbye = async (diary, dialog) => {
-    const instruction = `User expressed they are satisfied with your analysis about their emotion. Say thank and tell them to click Finish button on the top screen to finish section. Response should be shorter than 50 words. User is a Korean, use Korean to response them.`
+    const instruction = `User expressed they are satisfied with your analysis about their emotion. Say thank and tell them to click Finish button on the top screen to finish section. Response should be shorter than 50 words. User can use English or Korean, response to the user in their language.`
     const response = {
         error: "",
         phase: PHASE_LABEL.GOODBYE,
@@ -584,7 +588,7 @@ Use JSON format with the following properties:
 }
 
 const getEmotionList = async (userid) => {
-    const emotions = await Statistic.distinct("subcategory", { category: "emotion", userid: userid })
+    // const emotions = await Statistic.distinct("subcategory", { category: "emotion", userid: userid })
     const presetEmotions = Object.values(EMOTION_LABEL)
     const mergeList = presetEmotions
     // .concat(emotions)
@@ -600,6 +604,7 @@ module.exports = {
     generateEmotionReflection,
     categorizeContext,
     checkUserSatisfaction,
-    generateGoodbye
+    generateGoodbye,
+    getEmotionList
 }
 

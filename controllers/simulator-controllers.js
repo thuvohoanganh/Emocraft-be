@@ -50,7 +50,7 @@ const writeDiary = async (req, res, next) => {
     const existingDiaryContent = existingDiary? existingDiary.map(e => e.content) : []
 
     const instruction = `${USER_PERSONA}
-    - Now you are writing your diary of the day in Korean.
+    - Now you are writing your diary of the day.
     - Write about only 1 episode. 
     - Diary should less than 50 words. 
     - Don't write the date.
@@ -124,7 +124,6 @@ const userSimulatorResponse = async (req, res, next) => {
     You are encountering a conversation with an assistant. An assistant are trying to explore your contextual information and your emotions in your diary to understand you better.
     Your role is the user and your task is responding to the role assistant in the dialog. 
     If assisant provide undersanding about your emotions, you can agree or disagree with what assistant said and feedback to them what is your emotion.
-    You are a Korean, use Korean to response.
     Response should be less than 30 words. 
     Use simple words.
     Don't start the response with any special characters (e.g !"#$%&'()*+,-./:;<=>? )
