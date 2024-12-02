@@ -210,6 +210,13 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
     }).join("\n\n");
 
     contentIDs = diaries.map(diary => diary._id);
+    const contentDiaryIDs = diaries.reduce((acc, diary) => {
+        const day = dayMap[new Date(diary.timestamp).getDay()];
+        acc[day] = diary._id;
+        return acc;
+    }, {});
+    console.log('contentDiaryIDs:', contentDiaryIDs);    
+
 
     let summary;
     const user = await User.findById(uid);   
@@ -252,7 +259,8 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
         dailyEmotions: dailyTopEmotions,
         emotionPercentages: emotionPercentages,
         weeklyEmotions: Object.keys(emotionPercentages),
-        diaryEntries: contentIDs,
+        
+        dailyDiary: contentDiaryIDs
     });
 
     try {
