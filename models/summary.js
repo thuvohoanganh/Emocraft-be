@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { Schema } = require('mongoose');
 
 const SummarySchema = new mongoose.Schema({
     userid: { 
@@ -31,8 +32,13 @@ const SummarySchema = new mongoose.Schema({
         type: [String],
         required: true
     },
-    diaryEntries: {
-        type: [String],
+    // diaryEntries: {
+    //     type: [String],
+    //     required: false
+    // },
+    dailyDiary: {
+        type: Map,
+        of: String,
         required: false
     }
 })
