@@ -12,7 +12,8 @@ const {
     classifyEmotion,
     generateEmotionReflection,
     generateGoodbye,
-    getEmotionList
+    getEmotionList,
+    generateEncourageFeedback
 } = require('./phase-controllers');
 const { PHASE_LABEL } = require('../constant')
 const { validationResult } = require('express-validator');
@@ -54,10 +55,11 @@ const chatbotConversation = async (req, res, next) => {
         nextPhase = PHASE_LABEL.REFLECTION
     } else if (currentPhase === PHASE_LABEL.REVISE_EMOTION_LABEL) {
         nextPhase = PHASE_LABEL.REVISE_REFLECTION
-    } else if (currentPhase === PHASE_LABEL.REFLECTION) {
-        const result = await checkUserSatisfaction(diary, dialog)
-        nextPhase = result.next_phase
+    }  else if (currentPhase === PHASE_LABEL.REFLECTION) {
+        nextPhase = PHASE_LABEL.ENCOURAGE_FEEDBACK
     } else if (currentPhase === PHASE_LABEL.REVISE_REFLECTION) {
+        nextPhase = PHASE_LABEL.ENCOURAGE_FEEDBACK
+    } else if (currentPhase === PHASE_LABEL.ENCOURAGE_FEEDBACK) {
         const result = await checkUserSatisfaction(diary, dialog)
         nextPhase = result.next_phase
     }
@@ -103,6 +105,13 @@ const chatbotConversation = async (req, res, next) => {
     }
     else if (nextPhase === PHASE_LABEL.REVISE_REFLECTION) {
         const result = await reviseEmotionReflection(userid, diaryid, diary, dialog, emotions)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+        response.analysis = result.analysis
+    }
+    else if (nextPhase === PHASE_LABEL.ENCOURAGE_FEEDBACK) {
+        const result = await generateEncourageFeedback(diary, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content

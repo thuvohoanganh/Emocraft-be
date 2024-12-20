@@ -67,6 +67,7 @@ const PHASE_LABEL = {
     REVISE_EMOTION_LABEL: "feedback",
     REVISE_REFLECTION: "revise_reflection",
     GOODBYE: "goodbye",
+    ENCOURAGE_FEEDBACK: "encourage_feedback"
 }
 
 module.exports = {

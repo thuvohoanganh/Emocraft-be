@@ -129,7 +129,7 @@ Check again and make sure that emotions property only includes values in emotion
 Answer that the emotions you put in emotion property are included in emotion list or not. Reason how you generate emotions property.  
 Use English for this property
 ### content
-Explain to user why you think user have emotions that listed in the analysis property. Your response should be shorter than 100 words.
+Explain to user why you think user have emotions that listed in the analysis property. Your response should be shorter than 150 words.
 User can use English or Korean, response to the user in their language.
 
 Response must be JSON format:
@@ -178,7 +178,6 @@ const generateEmotionReflection = async (userid, diaryid, diary, dialog, emotion
 You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
 User can use English or Korean, response to the user in their language.
 
-Paragraph 1:
 Use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
 Based on previous diaries, identify whether the user has experienced similar emotions or been in similar contexts, and provide an explanation that allows the user to reflect on their current emotion based on those experiences.
 Response should be no longer than 200 words.
@@ -188,18 +187,6 @@ Emotions in current diary: ${JSON.stringify(emotions)}` : ""}
 ${retrievedDiaries.length > 0? `
 Previous diaries have similar context: ${JSON.stringify(retrievedDiaries)}` : ""}
 ${emotionRelevantDiaries.length > 0? `Previous diaries have similar emotions: ${JSON.stringify(emotionRelevantDiaries)}` : ""}
-
-Paragraph 2:
-Since your analysis may not always be accurate, encourage user’s feedback about emotional classification and reasoning. Separate with the paragraph 1 by a line break. The length of this paragraph should be shorter than 100 words.
-
-Response example in Korean:
-감정이 주를 이루고 있습니다. 이전에도 비슷한 상황에서 연구의 진전이나 친구들과의 즐거운 시간을 보내며 같은 감정을 느꼈던 것으로 보입니다. 특히, 연구에서 새로운 진전이 있을 때나 편안한 환경에서 시간을 보낼 때 '기쁨'과 '평온함'이라는 감정이 동시에 느껴졌습니다. 이런 경험들을 통해 현재의 감정이 어떤 상황에서 오는지, 그리고 어떤 감정이 자주 반복되는지를 파악하실 수 있을 것입니다.\n" +
-'\n'
-'제 분석이 항상 정확하지는 않을 수 있습니다. 따라서 사용자님의 피드백을 통해 감정 분류와 추론 과정을 더욱 개선해 나갈 수 있도록 도와주시면 감사하겠습니다.'
-Response example in English:
-"The main focus is on emotions. It seems that in similar situations before, you experienced the same feelings while making progress in your research or spending enjoyable time with friends. In particular, emotions such as "joy" and "calmness" were simultaneously felt when there were new advancements in research or when you spent time in a comfortable environment.\n" +
-'\n'
-'My analysis may not always be entirely accurate. Therefore, I would greatly appreciate your feedback to help improve the process of classifying and inferring emotions.'
 `
 
     // console.log("task_instruction", task_instruction)
@@ -429,6 +416,29 @@ ${emotionRelevantDiaries.length > 0? `Previous diaries have similar emotions: ${
     return response
 }
 
+const generateEncourageFeedback = async (diary, dialog) => {
+    const task_instruction = `Look at your conversation with the user and encourage user’s feedback about emotional classification and reasoning. Response in the same language with user. The length of the response should be shorter than 100 words. Don't analysis user' emotion again. Only ask for feedback.
+    Example: I hope my analysis aligns with your feelings, but emotions are often complex. If my interpretation resonates with you, or it you feel there are other emotions or reasons at play, I greatly appreciate your feedback. Please let me know how this analysis could be adjusted to better support your reflection!`
+    const response = {
+        error: "",
+        phase: PHASE_LABEL.ENCOURAGE_FEEDBACK,
+        content: "",
+        rationale: ""
+    }
+
+    const _res = await generateResponse(diary, dialog, task_instruction)
+
+    try {
+        response.content = _res
+    } catch {
+        console.error(_res)
+        response.content = _res
+    }
+
+    response.content = response.content?.replace(/^\"+|\"+$/gm, '')
+
+    return response
+}
 
 const checkUserSatisfaction = async (diary, dialog) => {
     const response = {
@@ -436,7 +446,7 @@ const checkUserSatisfaction = async (diary, dialog) => {
         next_phase: PHASE_LABEL.REVISE_EMOTION_LABEL
     }
 
-    const instruction = `- You are a helpful assistant that analyzes the content of the dialog history. If the last user'response totally agree with your emotion analysis and the emotions you said are the same with what user is feeling, then return true. If they don't, return false.`
+    const instruction = `You are a helpful assistant that analyzes the content of the dialog history. If the last user'response totally agree with your emotion analysis and the emotions you said are the same with what user is feeling, then return true. If they don't, return false.`
 
     const _res = await generateAnalysis(diary, dialog, instruction)
     console.log("checkUserSatisfaction", _res)
@@ -605,6 +615,7 @@ module.exports = {
     categorizeContext,
     checkUserSatisfaction,
     generateGoodbye,
-    getEmotionList
+    getEmotionList,
+    generateEncourageFeedback
 }
 
