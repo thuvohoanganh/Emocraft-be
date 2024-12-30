@@ -97,11 +97,9 @@ const askMissingInfor = async (diary, dialog, summary) => {
         ) : !summary.time_of_day ? (
             `- Guess the key event happened at what time of day (e.g morning, noon, evening, night) and ask user if it is right.`
         ) : ""}
-    - User can use English or Korean, response to the user in their language.
     - Response should be less than 50 words.
     - Ask only one question.
-    ${GENERAL_SPEAKING_RULES}
-`
+    ${GENERAL_SPEAKING_RULES}`
     const res = await generateResponse(diary, dialog, instruction)
     if (!res) {
         response.error = "ChatGPT failed"
@@ -130,7 +128,6 @@ Answer that the emotions you put in emotion property are included in emotion lis
 Use English for this property
 ### content
 Explain to user why you think user have emotions that listed in the analysis property. Your response should be shorter than 150 words.
-User can use English or Korean, response to the user in their language.
 
 Response must be JSON format:
 {
@@ -176,7 +173,6 @@ const generateEmotionReflection = async (userid, diaryid, diary, dialog, emotion
 
     let task_instruction = `You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
 You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
-User can use English or Korean, response to the user in their language.
 
 Use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
 Based on previous diaries, identify whether the user has experienced similar emotions or been in similar contexts, and provide an explanation that allows the user to reflect on their current emotion based on those experiences.
@@ -341,7 +337,6 @@ const reviseEmotionClassification = async (diary, dialog, userid) => {
     Don't use third person pronoun. 
     Never return array of emotions in this properties.
     Your response should be shorter than 50 words.
-    User can use English or Korean, response to the user in their language.
     ## rationale
     reason how you generate analysis properties. The emotions you put in analysis are included in emotion list or not.
     
@@ -395,7 +390,6 @@ const reviseEmotionReflection = async (userid, diaryid, diary, dialog, emotions)
 
     let task_instruction = `You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
 You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
-User can use English or Korean, response to the user in their language.
 
 Use previous diaries with similar emotion or similar context to current diary. Find if there are common contexts when the user felt a similar emotion to the one in their current diary, or if there are common emotions felt in similar contexts. 
 Based on previous diaries, identify whether the user has experienced similar emotions or been in similar contexts, and provide an explanation that allows the user to reflect on their current emotion based on those experiences.
@@ -417,7 +411,7 @@ ${emotionRelevantDiaries.length > 0? `Previous diaries have similar emotions: ${
 }
 
 const generateEncourageFeedback = async (diary, dialog) => {
-    const task_instruction = `Look at your conversation with the user and encourage user’s feedback about emotional classification and reasoning. Response in the same language with user. The length of the response should be shorter than 100 words. Don't analysis user' emotion again. Only ask for feedback.
+    const task_instruction = `Encourage user’s feedback about emotional classification and reasoning. The length of the response should be shorter than 50 words. Don't analysis user' emotion. Only ask for feedback.
     Example: I hope my analysis aligns with your feelings, but emotions are often complex. If my interpretation resonates with you, or it you feel there are other emotions or reasons at play, I greatly appreciate your feedback. Please let me know how this analysis could be adjusted to better support your reflection!`
     const response = {
         error: "",
@@ -426,7 +420,7 @@ const generateEncourageFeedback = async (diary, dialog) => {
         rationale: ""
     }
 
-    const _res = await generateResponse(diary, dialog, task_instruction)
+    const _res = await generateResponse(diary, [], task_instruction)
 
     try {
         response.content = _res
@@ -464,7 +458,7 @@ const checkUserSatisfaction = async (diary, dialog) => {
 }
 
 const generateGoodbye = async (diary, dialog) => {
-    const instruction = `User expressed they are satisfied with your analysis about their emotion. Say thank and tell them to click Finish button on the top screen to finish section. Response should be shorter than 50 words. User can use English or Korean, response to the user in their language.`
+    const instruction = `User expressed they are satisfied with your analysis about their emotion. Say thank and tell them to click Finish button on the top screen to finish section. Response should be shorter than 50 words.`
     const response = {
         error: "",
         phase: PHASE_LABEL.GOODBYE,
@@ -494,11 +488,13 @@ const generateResponse = async (diary, dialog, instruction) => {
         {
             role: "system",
             content: `${instruction} 
+            Detect user's language in the diary and response to the user in their language. User may use English or Korean.
             User's diary: ${diary}`
         },
         ..._dialog
     ]
 
+    // console.log("messages", messages)
     try {
         const chatCompletions = await openai.chat.completions.create({
             messages,

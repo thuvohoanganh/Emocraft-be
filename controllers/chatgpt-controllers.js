@@ -176,7 +176,8 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
     const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const dailyTopEmotions = {};
     const totalEmotions = {};
-    const emotionList = await getEmotionList(uid);
+    let totalIntensity = 0
+    const emotionPercentages = [];
 
     diaries.forEach(diary => {
         const day = dayMap[new Date(diary.timestamp).getDay()];
@@ -187,7 +188,12 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
             return;
         }
 
-        dailyTopEmotions[day] = emotions?.filter(emotion => emotionList.includes(emotion)) || [];
+        if (dailyTopEmotions[day]) {
+            dailyTopEmotions[day] = dailyTopEmotions[day].concat(emotions)
+        } else {
+            dailyTopEmotions[day] = [...emotions]
+        }
+
 
         if (emotions) {
             emotions.forEach(emotion => {
@@ -197,22 +203,25 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
                     } else {
                         totalEmotions[emotion] = 1;
                     }
-        }});
+                    totalIntensity += 1
+            }});
         }
     });
-
-    const totalIntensity = Object.values(totalEmotions).reduce((sum, val) => sum + val, 0);
-    const emotionPercentages = {};
 
     if (totalIntensity > 0) {
         for (const emotion in totalEmotions) {
             const value = totalEmotions[emotion];
             if (!isNaN(value) && value >= 0) {
-                emotionPercentages[emotion] = ((value / totalIntensity) * 100).toFixed(1);
+                emotionPercentages.push({
+                    emotion: emotion,
+                    percentage: ((value / totalIntensity) * 100).toFixed(1)
+                })
             }
         }
     }
     
+    emotionPercentages.sort((a,b) => b.percentage - a.percentage)
+
     const contentToSummarize = diaries.map(diary => {
         const date = new Date(diary.timestamp).toLocaleString();
         return `On ${date}: ${diary.content}`;
@@ -259,11 +268,12 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
         startdate: startDate,
         enddate: endDate,
         dailyEmotions: dailyTopEmotions,
-        emotionPercentages: emotionPercentages,
-        weeklyEmotions: Object.keys(emotionPercentages),
+        emotionPercentages: JSON.stringify(emotionPercentages),
+        weeklyEmotions: emotionPercentages.map(e => e.emotion),
         diaryEntries: contentIDs,
     });
 
+    console.log("newSummary", newSummary)
     try {
         await newSummary.save();
         console.log('Successfully saved new weekly summary');
@@ -379,6 +389,18 @@ const getWeeklySummaries = async (req, res, next) => {
     let summaries = [];
     try {
         summaries = await Summary.find({ userid: uid });
+        summaries = summaries.map(e => ({
+            _id: e._id,
+            userid: e.userid,
+            content: e.content,
+            startdate: e.startdate,
+            enddate: e.enddate,
+            dailyEmotions: e.dailyEmotions,
+            weeklyEmotions: e.weeklyEmotions,
+            diaryEntries: e.diaryEntries,
+            emotionPercentages: JSON.parse(e.emotionPercentages)
+        }))
+        console.log("summaries", summaries)
     } catch (err) {
         console.error(err);
         return next(new HttpError('Fetching summaries failed, please try again later.', 500));
@@ -394,6 +416,18 @@ const getWeeklySummary = async (req, res, next) => {
     let summary = null;
     try {
         summary = await Summary.findOne({ _id: id });
+        console.log("summary", summary)
+        summary = {
+            id: summary._id,
+            userid: summary.userid,
+            content: summary.content,
+            startdate: summary.startdate,
+            enddate: summary.enddate,
+            dailyEmotions: summary.dailyEmotions,
+            weeklyEmotions: summary.weeklyEmotions,
+            diaryEntries: summary.diaryEntries,
+            emotionPercentages: JSON.parse(summary.emotionPercentages)
+        }
     } catch (err) {
         console.error(err);
         return next(new HttpError('Fetching summaries failed, please try again later.', 500));

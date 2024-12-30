@@ -23,8 +23,7 @@ const SummarySchema = new mongoose.Schema({
         required: true 
     },
     emotionPercentages: {
-        type: Map,
-        of: String,
+        type: String,
         required: true
     },
     weeklyEmotions: {
