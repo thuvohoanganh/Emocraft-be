@@ -162,25 +162,21 @@ const checkUserExists = async (userId) => {
     return existingUser;
 };
 
-// weekly summary
 const generateWeeklySummary = async (uid, startDate, endDate) => {
     // print params, recheck if the params are correct
     // console.log('generateWeeklySummary params:', startDate, endDate);
-    // console.log('\n');
 
     const diaries = await getWeeklyEntries(uid, startDate, endDate);
     if (!diaries || diaries.length < 3) {
         return null;
     }
 
-    const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const dailyTopEmotions = {};
+    const dailyTopEmotions = [];
     const totalEmotions = {};
     let totalIntensity = 0
     const emotionPercentages = [];
 
     diaries.forEach(diary => {
-        const day = dayMap[new Date(diary.timestamp).getDay()];
         const emotions = diary.emotions;
 
         if (!Array.isArray(emotions)) {
@@ -188,12 +184,13 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
             return;
         }
 
-        if (dailyTopEmotions[day]) {
-            dailyTopEmotions[day] = dailyTopEmotions[day].concat(emotions)
-        } else {
-            dailyTopEmotions[day] = [...emotions]
+        const item = {
+            timestamp: diary.timestamp,
+            emotions: diary.emotions,
+            content: diary.content,
+            diaryId: diary._id
         }
-
+        dailyTopEmotions.push(item)
 
         if (emotions) {
             emotions.forEach(emotion => {
@@ -227,8 +224,6 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
         return `On ${date}: ${diary.content}`;
     }).join("\n\n");
 
-    contentIDs = diaries.map(diary => diary._id);
-
     let summary;
     const user = await User.findById(uid);   
     if (!user) {
@@ -248,7 +243,7 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
                     - You are a helpful assistant that analyzes the content of diary entries.
                     - Given the diary entries for the past week, summarizes the experiences and emotions into a coherent paragraph.
                     - Start with a general but specific observation about the week's overall trend. Be concise in your summary.
-                    - Use a third person view for the summary and avoid including dates and times. Mention the user's name: ${user.name}.
+                    - Use a third person view for the summary and avoid including dates and times. Mention the user's name: ${user.name}. User's gender is ${user.gender}. 
                     - Diaries owner can use English or Korean, generate response in the language that is the same as diary entries.
                     - Here are the diary entries: ${contentToSummarize}
                 `
@@ -267,13 +262,12 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
         content: summary,
         startdate: startDate,
         enddate: endDate,
-        dailyEmotions: dailyTopEmotions,
+        dailyEmotions: JSON.stringify(dailyTopEmotions),
         emotionPercentages: JSON.stringify(emotionPercentages),
         weeklyEmotions: emotionPercentages.map(e => e.emotion),
-        diaryEntries: contentIDs,
     });
 
-    console.log("newSummary", newSummary)
+    // console.log("newSummary", newSummary)
     try {
         await newSummary.save();
         console.log('Successfully saved new weekly summary');
@@ -292,9 +286,8 @@ const getWeeklyEntries = async ( uid, startDate, endDate ) => {
         diaries = await Diary.find({
             userid: uid,
             timestamp: { $gte: startDate, $lte: endDate }
-        });
-    
-        diaries.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        })
+        .sort({ timestamp: -1 });    
     } catch (err) {
         console.error('Error fetching diaries:', err);
         throw new HttpError('Fetching diaries failed, please try again later.', 500);
@@ -388,16 +381,15 @@ const getWeeklySummaries = async (req, res, next) => {
     // get all summaries
     let summaries = [];
     try {
-        summaries = await Summary.find({ userid: uid });
+        summaries = await Summary.find({ userid: uid }).sort({ startdate: -1 });
         summaries = summaries.map(e => ({
             _id: e._id,
             userid: e.userid,
             content: e.content,
             startdate: e.startdate,
             enddate: e.enddate,
-            dailyEmotions: e.dailyEmotions,
+            dailyEmotions: JSON.parse(e.dailyEmotions),
             weeklyEmotions: e.weeklyEmotions,
-            diaryEntries: e.diaryEntries,
             emotionPercentages: JSON.parse(e.emotionPercentages)
         }))
         console.log("summaries", summaries)
@@ -412,22 +404,21 @@ const getWeeklySummaries = async (req, res, next) => {
 const getWeeklySummary = async (req, res, next) => {
     const id = req.params.id;
 
-    // get all summaries
     let summary = null;
     try {
         summary = await Summary.findOne({ _id: id });
-        console.log("summary", summary)
+
         summary = {
             id: summary._id,
             userid: summary.userid,
             content: summary.content,
             startdate: summary.startdate,
             enddate: summary.enddate,
-            dailyEmotions: summary.dailyEmotions,
+            dailyEmotions: JSON.parse(summary.dailyEmotions),
             weeklyEmotions: summary.weeklyEmotions,
-            diaryEntries: summary.diaryEntries,
             emotionPercentages: JSON.parse(summary.emotionPercentages)
         }
+
     } catch (err) {
         console.error(err);
         return next(new HttpError('Fetching summaries failed, please try again later.', 500));

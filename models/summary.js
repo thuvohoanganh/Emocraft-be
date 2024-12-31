@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { Schema } = require('mongoose');
 
 const SummarySchema = new mongoose.Schema({
     userid: { 
@@ -18,8 +19,7 @@ const SummarySchema = new mongoose.Schema({
         required: true 
     },
     dailyEmotions: { 
-        type: Map,
-        of: [String],
+        type: String, 
         required: true 
     },
     emotionPercentages: {
@@ -30,10 +30,6 @@ const SummarySchema = new mongoose.Schema({
         type: [String],
         required: true
     },
-    diaryEntries: {
-        type: [String],
-        required: false
-    }
 })
 
 module.exports = mongoose.model('Summary', SummarySchema);

@@ -60,6 +60,7 @@ const retrieveDiary = async (req, res, next) => {
     try {
         await checkUserExists(req.params.uid);
     } catch (err) {
+        console.error(err)
         return next(err);
     }
 
@@ -72,6 +73,7 @@ const retrieveDiary = async (req, res, next) => {
             ))
         }
     } catch (err) {
+        console.error(err)
         const error = new HttpError(
             'Retrieving diary entry failed, please try again later.',
             500
