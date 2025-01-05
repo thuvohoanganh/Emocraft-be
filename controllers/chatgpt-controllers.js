@@ -392,7 +392,6 @@ const getWeeklySummaries = async (req, res, next) => {
             weeklyEmotions: e.weeklyEmotions,
             emotionPercentages: JSON.parse(e.emotionPercentages)
         }))
-        console.log("summaries", summaries)
     } catch (err) {
         console.error(err);
         return next(new HttpError('Fetching summaries failed, please try again later.', 500));

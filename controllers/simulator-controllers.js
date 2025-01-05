@@ -11,19 +11,14 @@ const USER_PERSONA = `Name: Alex Parker
 Role: Graduate Student in Computer Science
 
 ## Background and Habits:
-Alex is in their second year of a master’s program in computer science, specializing in artificial intelligence and natural language processing. They’re highly introspective and value self-awareness, often using their daily diary as a space to explore and reflect on their emotions. Alex believes that understanding their emotional states helps them manage stress better and enhances their focus on academic projects.
+Alex is in their second year of a master’s program in computer science. They’re highly introspective and value self-awareness, often using their daily diary as a space to explore and reflect on their emotions. Alex believes that understanding their emotional states helps them manage stress better and enhances their focus on academic projects.
 
 ## Personality and Lifestyle:
 Alex is analytical and thoughtful, often viewing emotions as data points that can be observed, understood, and learned from. They enjoy writing in the evenings after a long day, either in their cozy study nook or a quiet coffee shop nearby. By regularly journaling about emotions, Alex has gained insight into patterns in their stress, motivation, and personal interactions.
-
-## Favorite Diary Topics:
-Challenges and victories in their research
-Reflections on academic and personal relationships
-Goals for emotional well-being and mental clarity
-
+He is frequently stressed about the workload and research 
 ## Daily Schedule
 Wake up, quick stretching, and breakfast
-Head to campus or log in for research work; typically involves coding, data analysis, and experimenting with NLP models
+Head to campus or log in for research work; typically involves coding, data analysis
 Lunch break, often taken with lab mates or a quick solo lunch while reading a research paper
 Attend classes or seminars, including any graduate coursework or lab meetings
 Take a walk or grab coffee to refresh before tackling more work or attending any study group
@@ -46,7 +41,6 @@ const writeDiary = async (req, res, next) => {
     }
 
     const existingDiary = await Diary.find({ userid });
-    // console.log("existingDiary", existingDiary)
     const existingDiaryContent = existingDiary? existingDiary.map(e => e.content) : []
 
     const instruction = `${USER_PERSONA}
@@ -60,8 +54,7 @@ const writeDiary = async (req, res, next) => {
         `These are your previous diaries: ${JSON.stringify(existingDiaryContent)}`
     : ""}
     `
-
-    // console.log("writeDiary", instruction)
+    
     const messages = [
         {
             role: "system",

@@ -79,6 +79,29 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
     return response
 }
 
+const checkUserSatisfaction = async (diary, dialog) => {
+    const response = {
+        error: "",
+        next_phase: PHASE_LABEL.REVISE_EMOTION_LABEL
+    }
+
+    const instruction = `You are a helpful assistant that analyzes the content of the dialog history. If the last user'response totally agree with your emotion analysis and the emotions you said are the same with what user is feeling, then return true. If they don't, return false.`
+
+    const _res = await generateAnalysis(diary, dialog, instruction)
+    console.log("checkUserSatisfaction", _res)
+    try {
+        if (_res?.toLowerCase() === "true") {
+            response.next_phase = PHASE_LABEL.GOODBYE
+        }
+    } catch(error) {
+        console.error(error)
+        response.error = "ChatGPT failed"
+        return response
+    }
+
+    return response
+}
+
 const askMissingInfor = async (diary, dialog, summary) => {
     const response = {
         error: "",
@@ -326,23 +349,23 @@ const reviseEmotionClassification = async (diary, dialog, userid) => {
     - If user give feedback to you, try to make analysis again based on diary and their feedback.
     - Use JSON format with the following properties:
     - Emotion list: ${emotionList}.
-    ## analysis
-    Based on diary and dialog, detect which emotions of emotion list in the diary entry according to their intensity, starting with the strongest and listing them in descending order.
-    Don't include any emotion outside of the list.
+    ## emotions
+    Based on diary and dialog, list out user's emotions, starting with the strongest and listing them in descending order.
+    Only use emotion in the Emotion list. Don't include any emotion outside of the list.
     Find the most similar emotion in the list to describe emotions in diary.
     Do not repeat emotion. 
-    Format the analysis as follows: [first intense emotion, second most intense]. 
     Length of array must be less than 4. 
+    Never return empty string.
     ## content
     Don't use third person pronoun. 
     Never return array of emotions in this properties.
     Your response should be shorter than 50 words.
     ## rationale
-    reason how you generate analysis properties. The emotions you put in analysis are included in emotion list or not.
+    reason how you generate emotions properties. The emotions you put in analysis are included in emotion list or not.
     
     Return the response in JSON format:
         {
-            "analysis": [string],
+            "emotions": [string],
             "content": string,
             "rationale": string
         }
@@ -361,7 +384,7 @@ const reviseEmotionClassification = async (diary, dialog, userid) => {
         const res = JSON.parse(_res)
         if (res.content) {
             response.content = res.content.replace(/^\"+|\"+$/gm, '')
-            response.analysis = res.analysis
+            response.analysis = res.emotions
             response.rationale = res.rationale
         } else {
             response.content = _res?.replace(/^\"+|\"+$/gm, '')
@@ -434,31 +457,11 @@ const generateEncourageFeedback = async (diary, dialog) => {
     return response
 }
 
-const checkUserSatisfaction = async (diary, dialog) => {
-    const response = {
-        error: "",
-        next_phase: PHASE_LABEL.REVISE_EMOTION_LABEL
-    }
-
-    const instruction = `You are a helpful assistant that analyzes the content of the dialog history. If the last user'response totally agree with your emotion analysis and the emotions you said are the same with what user is feeling, then return true. If they don't, return false.`
-
-    const _res = await generateAnalysis(diary, dialog, instruction)
-    console.log("checkUserSatisfaction", _res)
-    try {
-        if (_res?.toLowerCase() === "true") {
-            response.next_phase = PHASE_LABEL.GOODBYE
-        }
-    } catch(error) {
-        console.error(error)
-        response.error = "ChatGPT failed"
-        return response
-    }
-
-    return response
-}
-
 const generateGoodbye = async (diary, dialog) => {
-    const instruction = `User expressed they are satisfied with your analysis about their emotion. Say thank and tell them to click Finish button on the top screen to finish section. Response should be shorter than 50 words.`
+    const instruction = `You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
+    If user want to continue the conversation, you should be a active listener, an empathetic friend and response them.
+    If user want to finish conversation say thank and tell them to click Finish button on the top screen to finish section. 
+    Response should be shorter than 50 words.`
     const response = {
         error: "",
         phase: PHASE_LABEL.GOODBYE,
