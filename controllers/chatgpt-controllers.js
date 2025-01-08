@@ -15,7 +15,7 @@ const {
     getEmotionList,
     generateEncourageFeedback
 } = require('./phase-controllers');
-const { PHASE_LABEL } = require('../constant')
+const { PHASE_LABEL, GPT } = require('../constant')
 const { validationResult } = require('express-validator');
 const chalk = require('chalk');
 
@@ -248,7 +248,7 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
                     - Here are the diary entries: ${contentToSummarize}
                 `
             }],
-            model: "gpt-4",
+            model: GPT.MODEL,
             temperature: 0,
         });
         summary = response.choices[0].message.content.trim();

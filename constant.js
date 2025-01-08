@@ -70,8 +70,13 @@ const PHASE_LABEL = {
     ENCOURAGE_FEEDBACK: "encourage_feedback"
 }
 
+const GPT = {
+    MODEL: "gpt-4-0613"
+}
+
 module.exports = {
     EMOTION_LABEL,
     PHASE_LABEL,
-    EMOTION_DIMENSION
+    EMOTION_DIMENSION,
+    GPT
 }

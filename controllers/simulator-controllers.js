@@ -2,7 +2,7 @@ const OpenAI = require("openai")
 const HttpError = require('../models/http-error');
 const { validationResult } = require('express-validator');
 const Diary = require('../models/diary');
-
+const { GPT } = require('../constant')
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
@@ -65,7 +65,7 @@ const writeDiary = async (req, res, next) => {
     try {
         const chatCompletions = await openai.chat.completions.create({
             messages,
-            model: "gpt-4",
+            model: GPT.MODEL,
             temperature: 1
         });
 
@@ -132,7 +132,7 @@ const userSimulatorResponse = async (req, res, next) => {
     try {
         const chatCompletions = await openai.chat.completions.create({
             messages,
-            model: "gpt-4",
+            model: GPT.MODEL,
             temperature: 1
         });
 

@@ -1,7 +1,7 @@
 const OpenAI = require("openai")
 const dotenv = require("dotenv")
 const { EMOTION_LABEL, EMOTION_DIMENSION } = require("../constant");
-const { PHASE_LABEL } = require('../constant')
+const { PHASE_LABEL, GPT } = require('../constant')
 const Diary = require('../models/diary');
 const Statistic = require('../models/statistic');
 const { minmaxScaling } = require('../utils');
@@ -40,7 +40,7 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
  ## time_of_day: what time of day did event happen (e.g. morning, noon, night). Only extract text written by user, do not predict. Return only one word.
  ## skip: If user don't want to answer your questions, return true. Otherwise, return false.
  ## rationale: Describe your rationale on how properties emotions were derived. The emotions you put in analysis are included in emotion list or not and why you choose those emotions.
-    {
+{
         "summary": {
             "event": string | null,
             "location": string | null,
@@ -57,9 +57,6 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
         if (res.summary.event && res.summary.location && res.summary.people && res.summary.time_of_day) {
             response.next_phase = PHASE_LABEL.EMOTION_LABEL
         }
-        // else if (res.summary.skip) {
-        //     response.next_phase = PHASE_LABEL.EMOTION_LABEL
-        // }
         else {
             response.next_phase = PHASE_LABEL.BEGINNING
         }
@@ -501,7 +498,7 @@ const generateResponse = async (diary, dialog, instruction) => {
     try {
         const chatCompletions = await openai.chat.completions.create({
             messages,
-            model: "gpt-4",
+            model: GPT.MODEL,
             temperature: 0.5
         });
 
@@ -530,7 +527,7 @@ const generateAnalysis = async (diary, dialog, instruction) => {
     try {
         const chatCompletions = await openai.chat.completions.create({
             messages,
-            model: "gpt-4",
+            model: GPT.MODEL,
             temperature: 0.1
         });
 
