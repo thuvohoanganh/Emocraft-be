@@ -2,34 +2,43 @@ const OpenAI = require("openai")
 const HttpError = require('../models/http-error');
 const { validationResult } = require('express-validator');
 const Diary = require('../models/diary');
-const { GPT } = require('../constant')
+const { GPT } = require('../constant');
+const fs = require('fs');
+const { Parser } = require('json2csv');
+
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-const USER_PERSONA = `Name: Alex Parker
+const USER_PERSONA = `Name: Thu Vo
 Role: Graduate Student in Computer Science
 
 ## Background and Habits:
-Alex is in their second year of a master’s program in computer science. They’re highly introspective and value self-awareness, often using their daily diary as a space to explore and reflect on their emotions. Alex believes that understanding their emotional states helps them manage stress better and enhances their focus on academic projects.
+Thu is in their second year of a master’s program in computer science. She's highly introspective and value self-awareness, often using their daily diary as a space to explore and reflect on their emotions. Thu believes that understanding their emotional states helps them manage stress better and enhances their focus on academic projects.
 
-## Personality and Lifestyle:
-Alex is analytical and thoughtful, often viewing emotions as data points that can be observed, understood, and learned from. They enjoy writing in the evenings after a long day, either in their cozy study nook or a quiet coffee shop nearby. By regularly journaling about emotions, Alex has gained insight into patterns in their stress, motivation, and personal interactions.
-He is frequently stressed about the workload and research 
+## Hobbies and interests
+shopping food clothes, surfing facebook, traveling
+
+## Relationship
+She have a boyfriend and they meet at dinner everyday. She have a lovely female roomate who she can talk to everyday and express her feelings. 
+She usually work with Phd students named Yugyeong and Guywon - her labmate. They are very supportive. She struggles in doing research and her labmates help her a lot.
+
+## Personality
+She is ITTP. She is an introvert, like cute things. She is easily get tired and overwhelmed when doing a lot of things at the same time.
+
 ## Daily Schedule
-Wake up, quick stretching, and breakfast
-Head to campus or log in for research work; typically involves coding, data analysis
-Lunch break, often taken with lab mates or a quick solo lunch while reading a research paper
-Attend classes or seminars, including any graduate coursework or lab meetings
-Take a walk or grab coffee to refresh before tackling more work or attending any study group
-Spend time on hobbies or unwind by reading, playing a puzzle game, or catching up with friends online
-Read a book or research article; bedtime around 11:00 PM
+Wake up, go to lab
+Work on reseach project
+Have lunch with labmates
+Have meeting with PhD students and professor about research project
+Have dinner with her boyfriend
+Study in the room until 11:00 PM
+Surf facebook, watch video for entertainment; bedtime around 12:00 PM
 
 ## Weekend Activities
-Alex often spends time at a local coffee shop or library, diving into personal projects or reading a book. They might also catch up on any class assignments that need extra focus.
-He enjoy hiking or visiting the botanical gardens to recharge. Occasionally, Alex joins friends for a sports activity, like badminton or a group yoga session.
-Weekends are ideal for exploring new restaurants or attending a local event with friends, such as a tech meetup or movie screening.
-Alex sets aside time for personal hobbies, like photography, or watches documentaries. In the evening, they spend extra time with their diary, reflecting on both the week’s achievements and emotional moments, and setting intentions for the upcoming week.`
+Keep working on research project in the room.
+Go to supermarket for food shopping
+Sometimes, she go to Chungang market for clothes shopping`
 
 
 
@@ -41,7 +50,7 @@ const writeDiary = async (req, res, next) => {
     }
 
     const existingDiary = await Diary.find({ userid });
-    const existingDiaryContent = existingDiary? existingDiary.map(e => e.content) : []
+    const existingDiaryContent = existingDiary ? existingDiary.map(e => e.content) : []
 
     const instruction = `${USER_PERSONA}
     - Now you are writing your diary of the day.
@@ -50,11 +59,11 @@ const writeDiary = async (req, res, next) => {
     - Don't write the date.
     - Use simple words but natural language. Don't list activities.
     
-    ${existingDiary.length > 0 ? 
-        `These are your previous diaries: ${JSON.stringify(existingDiaryContent)}`
-    : ""}
+    ${existingDiary.length > 0 ?
+            `These are your previous diaries: ${JSON.stringify(existingDiaryContent)}`
+            : ""}
     `
-    
+
     const messages = [
         {
             role: "system",
@@ -83,7 +92,7 @@ const writeDiary = async (req, res, next) => {
     }
 
 
-    response.content = response.content.replace(/^\"+|\"+$/gm,'')
+    response.content = response.content.replace(/^\"+|\"+$/gm, '')
 
     // console.log(response)
     res.status(200).json({
@@ -150,7 +159,7 @@ const userSimulatorResponse = async (req, res, next) => {
     }
 
 
-    response.content = response.content.replace(/^\"+|\"+$/gm,'')
+    response.content = response.content.replace(/^\"+|\"+$/gm, '')
 
     res.status(200).json({
         data: response
@@ -158,9 +167,77 @@ const userSimulatorResponse = async (req, res, next) => {
     return
 }
 
+const generateDatasetForEvaluation = async () => {
+    console.log("generateDatasetForEvaluation")
+
+    let jsonList = []
+    for (let i = 0; i < 50; i++) {
+        try {
+const instruction = `Given a persona, write only one emotional diary.
+Persona: ${USER_PERSONA}
+Previous diaries: 
+${JSON.stringify(jsonList.slice(-4))}
+- Diary length should be 3 sentences and less than 50 words. 
+- Use simple words but natural language. Don't list activities.
+- Use JSON format with the following properties:
+    + diary: content of diary.
+    + date: the date write diary.
+    + activity: detect key activity in the diary and return the category that it belong to. Consider these category: studying, research, resting, meeting, eating, socializing, leisure activity, exercise, moving. If it doesn't belong to any of those, generate suitable category label. Return only one main activity. Don't return "other".
+    + location: detect where did user usually have that emotions and return the category that it belong to. Consider these category: home, classroom, library, restaurant, office, laboratory. If it doesn't belong to any of those, generate suitable category label. Return only one location label relate to activity. Don't return "other".
+    + people: detect who did cause those emotions and return the category that it belong to. Consider these category: alone, family, boyfriend, girlfriend, roommate, friend, colleague, professor. If it doesn't belong to any of those, generate suitable category label. Return only one people label relate to activity. Don't return "other".
+    + time_of_day: what time of day did event happen. Only use one of the following: morning, noon, afternoon, evening, night, all_day. Return only one word.
+{
+"diary": string,
+"date": string,
+"activity": string,
+"location": string,
+"people": string,
+"time_of_day": string
+}`
+            const messages = [
+                {
+                    role: "system",
+                    content: `${instruction}`
+                },
+            ]
+            const chatCompletions = await openai.chat.completions.create({
+                messages,
+                model: GPT.MODEL,
+                temperature: 0.5
+            });
+
+            const _res = chatCompletions?.choices?.[0]?.message?.content
+            console.log(instruction)
+
+            console.log(i, _res)
+
+            const res = JSON.parse(_res)
+            jsonList.push(res)
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
+    console.log(2222)
+    const fields = ["diary", "date", "activity", "location", "people", "time_of_day"];
+    const opts = { fields };
+
+    try {
+        const parser = new Parser(opts);
+        const csv = parser.parse(jsonList);
+
+        // Write to a CSV file
+        fs.writeFileSync('synthesize_data/output.csv', csv);
+        console.log('CSV file successfully written to output.csv');
+    } catch (err) {
+        console.error('Error writing CSV:', err);
+    }
+    return
+}
 
 module.exports = {
     userSimulatorResponse,
-    writeDiary
+    writeDiary,
+    generateDatasetForEvaluation
 }
 
