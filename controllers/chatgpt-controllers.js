@@ -84,7 +84,7 @@ const chatbotConversation = async (req, res, next) => {
         response.content = result.content
     } 
     else if (nextPhase === PHASE_LABEL.EMOTION_LABEL) {
-        const result = await classifyEmotion(diary, userid)
+        const result = await classifyEmotion(diary, userid, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content

@@ -130,7 +130,9 @@ const askMissingInfor = async (diary, dialog, summary) => {
     return response
 }
 
-const classifyEmotion = async (diary, userid) => {
+const classifyEmotion = async (diary, userid, dialog) => {
+    const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, "", diary, dialog)
+    
     const emotionList = await getEmotionList(userid)
     const task_instruction = ` You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
 You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
@@ -138,14 +140,19 @@ You excel at detecting and interpreting a wide range of emotions, considering nu
 Return the response in JSON format, structured as follows:
 ### emotions
 Recorgize emotions in the diary to assign 2 or 1 emotion labels. 
-Consider emotion in this list: ${emotionList}. Don't include any emotion outside of the list.
+Consider emotion in this list: ${emotionList}.
+Don't include any emotion outside of the list.
 Find the most similar emotion in the list to describe emotions in diary.
 Array starts with the strongest and listing them in descending order.
 Return 2 or 1 strongest emotions in the array.
 Check again and make sure that emotions property only includes values in emotion list. 
+${retrievedDiaries.length? `In some similar context, user expressed some emotions. That may help you do better emotion classification:
+ ${JSON.stringify(retrievedDiaries)}` : ""}
+
 ### rationale
 Answer that the emotions you put in emotion property are included in emotion list or not. Reason how you generate emotions property.  
 Use English for this property
+
 ### content
 Explain to user why you think user have emotions that listed in the analysis property. Your response should be shorter than 150 words.
 
@@ -155,6 +162,7 @@ Response must be JSON format:
     "rationale": string,
     "content": string
 }`
+    console.log("task_instruction", task_instruction)
     const response = {
         error: "",
         phase: PHASE_LABEL.EMOTION_LABEL,
@@ -225,7 +233,8 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
 
         console.log("retrieveRelevantDiaryByContext", context)
 
-        diaries = await Diary.find({ userid: userid, _id: { $ne: diaryid } });
+        const query = diaryid? { userid: userid, _id: { $ne: diaryid } } : { userid: userid }
+        diaries = await Diary.find(query);
         if (!diaries) {
             return results
         }
@@ -238,7 +247,7 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
             if (diary.people === context.people) similarityScore += 0.25;
             if (diary.time_of_day === context.time_of_day) similarityScore += 0.25;
 
-            if (similarityScore >= 0.5) {
+            if (similarityScore > 0.5) {
                 contextRelevantDiary.push({
                     content: diary.content,
                     similarity: similarityScore,
