@@ -5,7 +5,8 @@ const Diary = require('../models/diary');
 const { GPT } = require('../constant');
 const fs = require('fs');
 const { Parser } = require('json2csv');
-
+const csvParser = require('csv-parser');
+const { getEmotionList, generateResponse } = require('./phase-controllers')
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
@@ -173,7 +174,7 @@ const generateDatasetForEvaluation = async () => {
     let jsonList = []
     for (let i = 0; i < 50; i++) {
         try {
-const instruction = `Given a persona, write only one emotional diary.
+            const instruction = `Given a persona, write only one emotional diary.
 Persona: ${USER_PERSONA}
 Previous diaries: 
 ${JSON.stringify(jsonList.slice(-4))}
@@ -207,9 +208,6 @@ ${JSON.stringify(jsonList.slice(-4))}
             });
 
             const _res = chatCompletions?.choices?.[0]?.message?.content
-            console.log(instruction)
-
-            console.log(i, _res)
 
             const res = JSON.parse(_res)
             jsonList.push(res)
@@ -218,7 +216,6 @@ ${JSON.stringify(jsonList.slice(-4))}
         }
     }
 
-    console.log(2222)
     const fields = ["diary", "date", "activity", "location", "people", "time_of_day"];
     const opts = { fields };
 
@@ -227,7 +224,7 @@ ${JSON.stringify(jsonList.slice(-4))}
         const csv = parser.parse(jsonList);
 
         // Write to a CSV file
-        fs.writeFileSync('synthesize_data/output.csv', csv);
+        fs.writeFileSync('synthesize_data/diaries.csv', csv);
         console.log('CSV file successfully written to output.csv');
     } catch (err) {
         console.error('Error writing CSV:', err);
@@ -235,9 +232,84 @@ ${JSON.stringify(jsonList.slice(-4))}
     return
 }
 
+const readCsvFileToArray = async (filePath) => {
+    const results = [];
+
+    return new Promise((resolve, reject) => {
+        fs.createReadStream(filePath)
+            .pipe(csvParser())
+            .on('data', (data) => results.push(data))
+            .on('end', () => resolve(results))
+            .on('error', (err) => reject(err));
+    });
+}
+
+const emotionClassificationWithoutMemory = async () => {
+    console.log("emotionClassificationWithoutMemory")
+
+    let jsonList = []
+
+    try {
+        jsonList = await readCsvFileToArray('synthesize_data/output.csv');
+    } catch (error) {
+        console.error('Error reading CSV file:', error);
+    }
+
+    for (let i = 0; i < jsonList.length; i++) {
+        let currentDiary = jsonList[i]
+        try {
+            const emotionList = await getEmotionList("")
+            const task_instruction = `You are an expert agent specializing in emotion classification, designed to analyze diary with a highly analytical approach.
+You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
+
+Return the response in JSON format, structured as follows:
+### emotions
+Recorgize emotions in the diary to assign 2 or 1 emotion labels. 
+Consider emotion in this list: ${emotionList}.
+Don't include any emotion outside of the list.
+Find the most similar emotion in the list to describe emotions in diary.
+Array starts with the strongest and listing them in descending order.
+Return 1 or 2 strongest emotions in the array.
+Check again and make sure that emotions property only includes values in emotion list. 
+
+### rationale
+Answer that the emotions you put in emotion property are included in emotion list or not. Reason how you generate emotions property.  
+Use English for this property
+
+Response must be JSON format:
+{
+    "emotions": [string],
+    "rationale": string,
+}`
+            const _res = await generateResponse(currentDiary.diary, [], task_instruction)
+
+            const res = JSON.parse(_res)
+            currentDiary.classification = res.emotions
+            currentDiary.rationale = res.rationale
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
+    const fields = ["diary", "date", "activity", "location", "people", "time_of_day", "annotation", "classification", "rationale"];
+    const opts = { fields };
+
+    try {
+        const parser = new Parser(opts);
+        const csv = parser.parse(jsonList);
+
+        // Write to a CSV file
+        fs.writeFileSync('synthesize_data/classification.csv', csv);
+        console.log('CSV file successfully written to output.csv');
+    } catch (err) {
+        console.error('Error writing CSV:', err);
+    }
+}
+
 module.exports = {
     userSimulatorResponse,
     writeDiary,
-    generateDatasetForEvaluation
+    generateDatasetForEvaluation,
+    emotionClassificationWithoutMemory
 }
 

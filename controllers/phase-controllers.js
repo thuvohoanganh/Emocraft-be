@@ -602,7 +602,7 @@ Use JSON format with the following properties:
     return response
 }
 
-const getEmotionList = async (userid) => {
+const getEmotionList = async (userid = "") => {
     // const emotions = await Statistic.distinct("subcategory", { category: "emotion", userid: userid })
     const presetEmotions = Object.values(EMOTION_LABEL)
     const mergeList = presetEmotions
@@ -621,6 +621,7 @@ module.exports = {
     checkUserSatisfaction,
     generateGoodbye,
     getEmotionList,
-    generateEncourageFeedback
+    generateEncourageFeedback,
+    generateResponse
 }
 
