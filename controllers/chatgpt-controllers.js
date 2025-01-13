@@ -306,8 +306,6 @@ const checkAndFulfillSummary = async (req, res, next) => {
     try {
         oldestDiary = await Diary.findOne({ userid: uid }).sort({ timestamp: 1 }).select('timestamp');
         newestDiary = await Diary.findOne({ userid: uid }).sort({ timestamp: -1 }).select('timestamp');
-        console.log('oldestDiary:', oldestDiary);
-        console.log('newestDiary:', newestDiary);
     } catch (err) {
         console.error(err);
         return res.status(200).json([]);
@@ -317,37 +315,45 @@ const checkAndFulfillSummary = async (req, res, next) => {
         return res.status(200).json([]);
     }
 
-    let curr = new Date(oldestDiary.timestamp);
-    const weekMarker = [new Date(curr)];
+    let from = new Date(oldestDiary.timestamp);
+    let to = new Date(newestDiary.timestamp);
+    to.setDate(to.getDate() - 1);
 
-    while (curr < newestDiary.timestamp) {
-        curr.setDate(curr.getDate() + 7);
-        if (curr < newestDiary.timestamp) {
-            weekMarker.push(new Date(curr));
-        }
+    const weekMarker = [new Date(from)];
+
+    from.setDate(from.getDate() + 7);
+    while (from <= to) {
+        weekMarker.push(new Date(from));
+        from.setDate(from.getDate() + 7);
     }
 
     console.log('weekMarker:', weekMarker);
 
     for (let index = 0; index < weekMarker.length - 1; index++) {
-        const startDate = new Date(weekMarker[index]);
-        startDate.setHours(0, 0, 0, 0);
+        const start = new Date(weekMarker[index]);
+        const end = new Date(weekMarker[index]);
+        start.setDate(start.getDate() - 1);
+        end.setDate(start.getDate() + 1);
 
-        const endDate = new Date(weekMarker[index + 1]);
-        endDate.setDate(endDate.getDate() - 1);
-        endDate.setHours(23, 59, 59, 999);
+        
 
-        let existingSummary;
+        let existingSummary = null;
         try {
             existingSummary = await Summary.findOne({
                 userid: uid,
-                startdate: { $gte: startDate },
-                enddate: { $lte: endDate }
-            });
+                startdate: { $gt: start, $lt: end },
+            })
         } catch (err) {
             console.error(err);
             return res.status(200).json([]);
         }
+
+        const startDate = new Date(weekMarker[index]);
+        const endDate = new Date(weekMarker[index]);
+        endDate.setDate(endDate.getDate() + 6);
+
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
 
         if (!existingSummary) {
             console.log(chalk.bgRed(`Summary for week ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()} is missing`));
@@ -361,7 +367,7 @@ const checkAndFulfillSummary = async (req, res, next) => {
                 console.log(chalk.red('Error generating summary for week', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString()));
             }
         } else {
-            console.log(`${chalk.bgYellow(`Summary for week ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()} exists:`)} ${existingSummary.content}`);
+            console.log(`${chalk.bgYellow(`Summary for week ${startDate.toISOString()} - ${endDate.toISOString()} exists:`)} ${existingSummary._id}`);
         }
     }
 
