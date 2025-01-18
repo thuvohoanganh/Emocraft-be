@@ -9,11 +9,11 @@ const {
     askMissingInfor,
     reviseEmotionClassification,
     reviseEmotionReflection,
-    classifyEmotion,
+    inferEmotion,
     generateEmotionReflection,
     generateGoodbye,
-    getEmotionList,
-    generateEncourageFeedback
+    generateEncourageFeedback,
+    checkEmotionInferenceAccuracy
 } = require('./phase-controllers');
 const { PHASE_LABEL, GPT } = require('../constant')
 const { validationResult } = require('express-validator');
@@ -52,12 +52,11 @@ const chatbotConversation = async (req, res, next) => {
         error = result.error
         summary = result.summary
     } else if (currentPhase === PHASE_LABEL.EMOTION_LABEL) {
-        nextPhase = PHASE_LABEL.REFLECTION
-    } else if (currentPhase === PHASE_LABEL.REVISE_EMOTION_LABEL) {
-        nextPhase = PHASE_LABEL.REVISE_REFLECTION
-    }  else if (currentPhase === PHASE_LABEL.REFLECTION) {
-        nextPhase = PHASE_LABEL.ENCOURAGE_FEEDBACK
-    } else if (currentPhase === PHASE_LABEL.REVISE_REFLECTION) {
+        const result = await checkEmotionInferenceAccuracy(diary, dialog)
+        nextPhase = result.next_phase
+        error = result.error
+        summary = result.summary
+    } else if (currentPhase === PHASE_LABEL.REFLECTION) {
         nextPhase = PHASE_LABEL.ENCOURAGE_FEEDBACK
     } else if (currentPhase === PHASE_LABEL.ENCOURAGE_FEEDBACK) {
         const result = await checkUserSatisfaction(diary, dialog)
@@ -84,7 +83,7 @@ const chatbotConversation = async (req, res, next) => {
         response.content = result.content
     } 
     else if (nextPhase === PHASE_LABEL.EMOTION_LABEL) {
-        const result = await classifyEmotion(diary, userid, dialog)
+        const result = await inferEmotion(diary, userid, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content
@@ -96,20 +95,6 @@ const chatbotConversation = async (req, res, next) => {
         response.phase = result.phase
         response.content = result.content
     } 
-    else if (nextPhase === PHASE_LABEL.REVISE_EMOTION_LABEL) {
-        const result = await reviseEmotionClassification(diary, dialog, userid)
-        error = result.error
-        response.phase = result.phase
-        response.content = result.content
-        response.analysis = result.analysis
-    }
-    else if (nextPhase === PHASE_LABEL.REVISE_REFLECTION) {
-        const result = await reviseEmotionReflection(userid, diaryid, diary, dialog, emotions)
-        error = result.error
-        response.phase = result.phase
-        response.content = result.content
-        response.analysis = result.analysis
-    }
     else if (nextPhase === PHASE_LABEL.ENCOURAGE_FEEDBACK) {
         const result = await generateEncourageFeedback(diary, dialog)
         error = result.error

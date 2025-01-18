@@ -71,7 +71,7 @@ const PHASE_LABEL = {
 }
 
 const GPT = {
-    MODEL: "gpt-4-0613"
+    MODEL: "gpt-4o-mini-2024-07-18"
 }
 
 module.exports = {

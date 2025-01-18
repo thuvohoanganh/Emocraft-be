@@ -79,7 +79,7 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
 const checkUserSatisfaction = async (diary, dialog) => {
     const response = {
         error: "",
-        next_phase: PHASE_LABEL.REVISE_EMOTION_LABEL
+        next_phase: PHASE_LABEL.ENCOURAGE_FEEDBACK
     }
 
     const instruction = `You are a helpful assistant that analyzes the content of the dialog history. If the last user'response totally agree with your emotion analysis and the emotions you said are the same with what user is feeling, then return true. If they don't, return false.`
@@ -89,6 +89,30 @@ const checkUserSatisfaction = async (diary, dialog) => {
     try {
         if (_res?.toLowerCase() === "true") {
             response.next_phase = PHASE_LABEL.GOODBYE
+        }
+    } catch(error) {
+        console.error(error)
+        response.error = "ChatGPT failed"
+        return response
+    }
+
+    return response
+}
+
+const checkEmotionInferenceAccuracy = async (diary, dialog) => {
+    const response = {
+        error: "",
+        next_phase: PHASE_LABEL.EMOTION_LABEL
+    }
+
+    const instruction = `You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach. You are trying to infer user's emotion from their diary.
+    Looking at the dialog and answer this question: Did the user agree that your understanding about their emotion is correct?`
+
+    const _res = await generateAnalysis(diary, dialog, instruction)
+    console.log("checkUserSatisfaction", _res)
+    try {
+        if (_res?.toLowerCase() === "true") {
+            response.next_phase = PHASE_LABEL.REFLECTION
         }
     } catch(error) {
         console.error(error)
@@ -130,38 +154,50 @@ const askMissingInfor = async (diary, dialog, summary) => {
     return response
 }
 
-const classifyEmotion = async (diary, userid, dialog) => {
+const inferEmotion = async (diary, userid, dialog) => {
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, "", diary, dialog)
-    
     const emotionList = await getEmotionList(userid)
-    const task_instruction = ` You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
-You excel at detecting and interpreting a wide range of emotions, considering nuanced language and complex emotional cues.
+    let task_instruction = `You are user's close friend and know their history emotions. You always want to understand how user feel in their diary.
 
 Return the response in JSON format, structured as follows:
-### emotions
-Recorgize emotions in the diary to assign 2 or 1 emotion labels. 
-Consider emotion in this list: ${emotionList}.
-Don't include any emotion outside of the list.
-Find the most similar emotion in the list to describe emotions in diary.
-Array starts with the strongest and listing them in descending order.
-Return 2 or 1 strongest emotions in the array.
-Check again and make sure that emotions property only includes values in emotion list. 
-${retrievedDiaries.length? `In some similar context, user expressed some emotions. That may help you do better emotion classification:
- ${JSON.stringify(retrievedDiaries)}` : ""}
-
-### rationale
-Answer that the emotions you put in emotion property are included in emotion list or not. Reason how you generate emotions property.  
-Use English for this property
-
-### content
-Explain to user why you think user have emotions that listed in the analysis property. Your response should be shorter than 150 words.
 
 Response must be JSON format:
 {
     "emotions": [string],
-    "rationale": string,
-    "content": string
-}`
+    "response": string,
+    "rationale": string
+}
+
+Property "emotions":
+return only 2 or 1 emotion labels. 
+Consider emotion in this list: ${emotionList}.
+Don't include any emotion outside of the list.
+Check again and make sure that emotions property only includes values in emotion list.`
+
+    if (retrievedDiaries.length) {
+        task_instruction += ` 
+        In some similar context, user expressed some emotions. Probably, user have same emotions to the past. These are how user feel in the similar context. 
+        ${JSON.stringify(retrievedDiaries)}
+        `
+    }
+    
+    task_instruction += `
+
+Property "response":
+In this property, you as a friend should tell user how you think about there emotion. response must shorter than 30 words.
+- Guess how user are feeling. Use emotion in emotion property.
+- If user think your understanding is not correct, ask them directly.
+- If user tell you they have other feelings, try to find the most similar emotions in the given list and ask if your understanding is right.
+Exapmle: 
+I guess you feeling are sad about it.
+You must feel joy or anxiety in that situation.
+Ah, I see. You're now feeling sad.
+
+Property "rationale":explain why you generate your response like that.
+`
+
+
+
     console.log("task_instruction", task_instruction)
     const response = {
         error: "",
@@ -176,8 +212,8 @@ Response must be JSON format:
     try {
         const res = JSON.parse(_res)
         response.analysis = res.emotions
-        response.content = res.content
-        console.log("classifyEmotion", res)
+        response.content = res.response
+        console.log("inferEmotion", res)
     } catch {
         console.error(_res)
         response.content = _res
@@ -519,6 +555,8 @@ const generateResponse = async (diary, dialog, instruction) => {
         console.error(err)
         return ""
     }
+
+    response= response.replace(/json|\`+|\`+$/gm, '')
     return response
 }
 
@@ -603,10 +641,8 @@ Use JSON format with the following properties:
 }
 
 const getEmotionList = async (userid = "") => {
-    // const emotions = await Statistic.distinct("subcategory", { category: "emotion", userid: userid })
     const presetEmotions = Object.values(EMOTION_LABEL)
     const mergeList = presetEmotions
-    // .concat(emotions)
     return [...new Set(mergeList)];
 }
 
@@ -615,13 +651,14 @@ module.exports = {
     askMissingInfor,
     reviseEmotionClassification,
     reviseEmotionReflection,
-    classifyEmotion,
+    inferEmotion,
     generateEmotionReflection,
     categorizeContext,
     checkUserSatisfaction,
     generateGoodbye,
     getEmotionList,
     generateEncourageFeedback,
-    generateResponse
+    generateResponse,
+    checkEmotionInferenceAccuracy
 }
 
