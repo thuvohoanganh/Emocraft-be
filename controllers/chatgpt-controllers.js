@@ -6,15 +6,16 @@ const Summary = require('../models/summary');
 const {
     checkCriteriaExplorePhase,
     checkUserSatisfaction,
+    checkEmotionInferenceAccuracy
+} = require('./phase-controllers');
+const {
     askMissingInfor,
-    reviseEmotionClassification,
-    reviseEmotionReflection,
+    reviseEmotionInference,
     inferEmotion,
     generateEmotionReflection,
     generateGoodbye,
     generateEncourageFeedback,
-    checkEmotionInferenceAccuracy
-} = require('./phase-controllers');
+} = require('./response-controllers');
 const { PHASE_LABEL, GPT } = require('../constant')
 const { validationResult } = require('express-validator');
 const chalk = require('chalk');
@@ -51,14 +52,17 @@ const chatbotConversation = async (req, res, next) => {
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
-    } else if (currentPhase === PHASE_LABEL.EMOTION_LABEL) {
+    } 
+    else if (currentPhase === PHASE_LABEL.EMOTION_LABEL || currentPhase === PHASE_LABEL.REVISE_EMOTION_LABEL) {
         const result = await checkEmotionInferenceAccuracy(diary, dialog)
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
-    } else if (currentPhase === PHASE_LABEL.REFLECTION) {
+    } 
+    else if (currentPhase === PHASE_LABEL.REFLECTION) {
         nextPhase = PHASE_LABEL.ENCOURAGE_FEEDBACK
-    } else if (currentPhase === PHASE_LABEL.ENCOURAGE_FEEDBACK) {
+    } 
+    else if (currentPhase === PHASE_LABEL.ENCOURAGE_FEEDBACK) {
         const result = await checkUserSatisfaction(diary, dialog)
         nextPhase = result.next_phase
     }
@@ -84,6 +88,13 @@ const chatbotConversation = async (req, res, next) => {
     } 
     else if (nextPhase === PHASE_LABEL.EMOTION_LABEL) {
         const result = await inferEmotion(diary, userid, dialog)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+        response.analysis = result.analysis
+    } 
+    else if (nextPhase === PHASE_LABEL.REVISE_EMOTION_LABEL) {
+        const result = await reviseEmotionInference(diary, userid, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content
@@ -303,7 +314,6 @@ const checkAndFulfillSummary = async (req, res, next) => {
     let from = new Date(oldestDiary.timestamp);
     let to = new Date(newestDiary.timestamp);
     to.setDate(to.getDate() - 1);
-
     const weekMarker = [new Date(from)];
 
     from.setDate(from.getDate() + 7);

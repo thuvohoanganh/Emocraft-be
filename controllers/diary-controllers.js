@@ -3,7 +3,7 @@ const Statistic = require('../models/statistic');
 const User = require('../models/user');
 const HttpError = require('../models/http-error');
 const { validationResult } = require('express-validator');
-const { categorizeContext } = require('./phase-controllers');
+const { categorizeContext } = require('./response-controllers');
 const { minmaxScaling } = require('../utils');
 
 const createDiary = async (req, res, next) => {

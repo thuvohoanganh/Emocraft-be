@@ -6,7 +6,9 @@ const { GPT } = require('../constant');
 const fs = require('fs');
 const { Parser } = require('json2csv');
 const csvParser = require('csv-parser');
-const { getEmotionList, generateResponse } = require('./phase-controllers')
+const { getEmotionList } = require('./phase-controllers');
+const { generateResponse } = require('./response-controllers')
+
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
@@ -55,7 +57,7 @@ const writeDiary = async (req, res, next) => {
 
     const instruction = `${USER_PERSONA}
     - Now you are writing your diary of the day.
-    - Write about only 1 episode. 
+    - Write about only 1 event. 
     - Diary should less than 50 words. 
     - Don't write the date.
     - Use simple words but natural language. Don't list activities.
@@ -76,7 +78,7 @@ const writeDiary = async (req, res, next) => {
         const chatCompletions = await openai.chat.completions.create({
             messages,
             model: GPT.MODEL,
-            temperature: 1
+            temperature: 0.7
         });
 
         response.content = chatCompletions?.choices?.[0]?.message?.content
