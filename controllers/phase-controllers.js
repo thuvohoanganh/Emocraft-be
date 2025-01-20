@@ -1,6 +1,6 @@
 const OpenAI = require("openai")
 const dotenv = require("dotenv")
-const { EMOTION_LABEL, EMOTION_DIMENSION } = require("../constant");
+const { EMOTION_LABEL } = require("../constant");
 const { PHASE_LABEL, GPT } = require('../constant')
 
 dotenv.config()
@@ -19,7 +19,7 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
             "skip": false,
             "rationale": ''
         },
-        next_phase: PHASE_LABEL.BEGINNING
+        next_phase: PHASE_LABEL.PHASE_1
     }
 
     const instruction = `- You are a helpful assistant that analyzes the content of the dialog history.
@@ -32,25 +32,23 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
  ## skip: If user don't want to answer your questions, return true. Otherwise, return false.
  ## rationale: Describe your rationale on how properties emotions were derived. The emotions you put in analysis are included in emotion list or not and why you choose those emotions.
 {
-        "summary": {
-            "event": string | null,
-            "location": string | null,
-            "people": string | null,
-            "time_of_day": string | null,
-            "skip": boolean,
-            "rationale": string,
-        }
-    }`
+    "summary": {
+        "event": string | null,
+        "location": string | null,
+        "people": string | null,
+        "time_of_day": string | null,
+        "skip": boolean,
+        "rationale": string,
+    }
+}`
 
     const _res = await generateAnalysis(diary, dialog, instruction)
     try {
         const res = JSON.parse(_res)
         if (res.summary.event && res.summary.location && res.summary.people && res.summary.time_of_day) {
-            response.next_phase = PHASE_LABEL.EMOTION_LABEL
+            response.next_phase = PHASE_LABEL.PHASE_2
         }
-        else {
-            response.next_phase = PHASE_LABEL.BEGINNING
-        }
+
         response.summary = res.summary
     } catch {
         if (!_res) {
@@ -61,23 +59,23 @@ const checkCriteriaExplorePhase = async (diary, dialog) => {
             response.error = "ChatGPT return wrong format"
             response.summary = null
         }
+        console.error(_res)
     }
 
     // console.log("checkCriteriaExplorePhase", response)
     return response
 }
 
-const checkUserSatisfaction = async (diary, dialog) => {
+const checkReasonClear = async (diary, dialog) => {
     const response = {
         error: "",
-        next_phase: PHASE_LABEL.ENCOURAGE_FEEDBACK
+        next_phase: PHASE_LABEL.PHASE_5
     }
 
     const instruction = `You are a helpful assistant that analyzes the content of the dialog history. 
 Return "true" if all following criteria are satisfied:
-the last user'response totally agree with you.
-Your understand is the same with what user is feeling.
-You don't express others feeling.
+The last user'response totally agree with you.
+Your totally understand the causes of user's emotions.
 
 Otherwise, return "false".
 
@@ -91,10 +89,10 @@ Property "response": your response to user.
 Property "rationale": explain how you generate your response follow instruction.`
 
     const _res = await generateAnalysis(diary, dialog, instruction)
-    console.log("checkUserSatisfaction", _res)
+    console.log("checkReasonClear", _res)
     try {
-        if (_res?.toLowerCase() === "true") {
-            response.next_phase = PHASE_LABEL.GOODBYE
+        if (_res?.response?.toLowerCase() === "true") {
+            response.next_phase = PHASE_LABEL.PHASE_6
         }
     } catch (error) {
         console.error(error)
@@ -108,14 +106,14 @@ Property "rationale": explain how you generate your response follow instruction.
 const checkEmotionInferenceAccuracy = async (diary, dialog) => {
     const response = {
         error: "",
-        next_phase: PHASE_LABEL.REVISE_EMOTION_LABEL
+        next_phase: PHASE_LABEL.PHASE_3
     }
 
     const instruction = `You are a helpful assistant that analyzes the content of the dialog history. 
-Return 1 if all following criteria are satisfied:
-the last user'response totally agree with you.
+Return "true" if all following criteria are satisfied:
+User agree with you.
 Your understand is the same with what user is feeling.
-You don't express others feeling.
+They don't express others feeling.
 
 Otherwise, return "false".
 
@@ -129,11 +127,11 @@ Property "response": your response to user.
 Property "rationale": explain how you generate your response follow instruction.`
 
     const _res = await generateAnalysis(diary, dialog, instruction)
-    console.log("checkUserSatisfaction", _res)
+    console.log("checkEmotionInferenceAccuracy", _res)
     try {
         const res = JSON.parse(_res)
         if (res.response.toLowerCase() === "true" ) {
-            response.next_phase = PHASE_LABEL.REFLECTION
+            response.next_phase = PHASE_LABEL.PHASE_4
         }
         console.log("checkEmotionInferenceAccuracy", res)
     } catch {
@@ -169,10 +167,11 @@ const generateAnalysis = async (diary, dialog, instruction) => {
         console.error(err)
         return ""
     }
+    response = response.replace(/json|\`\`\`+/gm, '')
     return response
 }
 
-const getEmotionList = async (userid = "") => {
+const getEmotionList = async () => {
     const presetEmotions = Object.values(EMOTION_LABEL)
     const mergeList = presetEmotions
     return [...new Set(mergeList)];
@@ -180,7 +179,7 @@ const getEmotionList = async (userid = "") => {
 
 module.exports = {
     checkCriteriaExplorePhase,
-    checkUserSatisfaction,
+    checkReasonClear,
     getEmotionList,
     checkEmotionInferenceAccuracy,
     generateAnalysis

@@ -61,17 +61,16 @@ const EMOTION_DIMENSION = {
 }
 
 const PHASE_LABEL = {
-    BEGINNING: "beginning",
-    EMOTION_LABEL: "fulfill",
-    REFLECTION: "context_retrieval",
-    REVISE_EMOTION_LABEL: "revise_emotion",
-    REVISE_REFLECTION: "revise_reflection",
-    GOODBYE: "goodbye",
-    ENCOURAGE_FEEDBACK: "encourage_feedback"
+    PHASE_1: "beginning",
+    PHASE_2: "emotion_classify",
+    PHASE_3: "revise_emotion_classify",
+    PHASE_4: "reasoning",
+    PHASE_5: "revise_reasoning",
+    PHASE_6: "goodbye",
 }
 
 const GPT = {
-    MODEL: "gpt-4o-mini-2024-07-18"
+    MODEL: "gpt-4o-2024-08-06"
 }
 
 module.exports = {

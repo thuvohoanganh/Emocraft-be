@@ -31,6 +31,9 @@ const DiarySchema = new mongoose.Schema({
     time_of_day: {
         type: String,
     },
+    reasons: {
+        type: String,
+    },
     frequency: {
         type: Number,
         default: 0
