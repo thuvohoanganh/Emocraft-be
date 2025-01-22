@@ -75,6 +75,7 @@ const checkReasonClear = async (diary, dialog) => {
     const instruction = `You are a helpful assistant that analyzes the content of the dialog history. 
 Return "true" if all following criteria are satisfied:
 The last user'response totally agree with you.
+User are not sharing more about the reasons make their emotions.
 Your totally understand the causes of user's emotions.
 
 Otherwise, return "false".
@@ -91,7 +92,8 @@ Property "rationale": explain how you generate your response follow instruction.
     const _res = await generateAnalysis(diary, dialog, instruction)
     console.log("checkReasonClear", _res)
     try {
-        if (_res?.response?.toLowerCase() === "true") {
+        const res = JSON.parse(_res) 
+        if (res?.response?.toLowerCase() === "true") {
             response.next_phase = PHASE_LABEL.PHASE_6
         }
     } catch (error) {
@@ -111,8 +113,8 @@ const checkEmotionInferenceAccuracy = async (diary, dialog) => {
 
     const instruction = `You are a helpful assistant that analyzes the content of the dialog history. 
 Return "true" if all following criteria are satisfied:
-User agree with you.
-Your understand is the same with what user is feeling.
+Finally, user agree with you.
+Finally, your understand is the same with what user is feeling.
 They don't express others feeling.
 
 Otherwise, return "false".
@@ -133,7 +135,6 @@ Property "rationale": explain how you generate your response follow instruction.
         if (res.response.toLowerCase() === "true" ) {
             response.next_phase = PHASE_LABEL.PHASE_4
         }
-        console.log("checkEmotionInferenceAccuracy", res)
     } catch {
         console.error(_res)
     }

@@ -56,10 +56,11 @@ ${JSON.stringify(retrievedDiaries)}`
     }
 
     task_instruction += `
-- Identify user’s emotions in current diary. Only identify 2 or 1 emotion labels. Assign labels to property emotions (e.g "emotions": ["joy", "anxiety"]).
-Consider emotion in this list: ${emotionList}. 
-Don't include any emotion outside of the list.
-- Consider how to say about user's emotions in empathy. Only mention the emotion that you indentify and it must be included the provided emotion list. Response should be shorter than 50 words.
+- Identify user’s emotions in current diary. Only identify 2 or 1 emotion labels. 
+- Try to find emotions in the list that is closely associated with user'emotions. (e.g relief, joy -> calmness, joy)
+Consider emotion in this list: ${emotionList}. Don't include any emotion outside of the list.
+- Assign labels to property emotions (e.g "emotions": ["calmness", "joy"]).
+- Consider how to say about user's emotions in empathy. Only mention about emotions that you indentified in emotion properties. Response should be shorter than 50 words.
 Example: Sorry to hear that, I guess you feeling are sad about it. Am I right?
 You must feel joy or anxiety in that situation.
 
@@ -72,7 +73,7 @@ Response must be JSON format:
 }
 property "emotions": array of emotions
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.
+Property "rationale": explain how you generate your response follow step by step instruction.
 `
     const response = {
         error: "",
@@ -87,7 +88,7 @@ Property "rationale": explain how you generate your response follow instruction.
     try {
         const res = JSON.parse(_res)
         if (!res.response) {
-            throw("Don't return in JSON format")
+            throw ("Don't return in JSON format")
         }
         response.content = res.response
         response.analysis = res.emotions
@@ -109,8 +110,7 @@ You infered user's emotion from their diary. User express more about their emoti
 Do step by step to infer user's emotion:
 - Identify what are the emotions of user.
 - If user express some emotions not included in given emotion list, try to find emotion in the list that is closely associated with what user mentioned. (e.g relief, joy -> calmness, joy)
-Emotion list: ${emotionList}.
-Don't include any emotion outside of the list.
+Emotion list: ${emotionList}. Don't include any emotion outside of the list.
 - Assign emotion labels to property emotions (e.g "emotions": ["calmness", "joy"])
 - Response to user how you understand their emotions.
 Example: Ah I see. you have a feeling of relief after the meeting. The emotion of relief can be closely associated with calmness. Now I understand you better.
@@ -124,7 +124,7 @@ Response must be JSON format:
 }
 property "emotions": array of emotions    
 Property "response": your response to user.
-Property "rationale": explain how you generate your response follow instruction.
+Property "rationale": explain how you generate your response follow step by step instruction.
 `
 
     const response = {
@@ -171,9 +171,8 @@ ${JSON.stringify(retrievedDiaries)}
 - If the currect emotions are different from emotions in the similar context, ask user why this time they feel like this compare to previous scenario. (e.g "You don’t often feel disappointed when meeting friends. Could you tell me more about why you felt that way this time?")`
     } else {
         task_instruction += ` 
-- Guess the reason why user feel like that in the current context and ask user is it right in the property response.
-- Check and make sure that the result is JSON string and it can be parsed to JSON object.
-`
+- Guess the reason why user feel like that in the current context. Tell it to user and ask them is it right in the property response.
+(e.g "Let me guess why you might have felt that way. Could it be that you received positive feedback on a new idea during a meeting with your professor this time as well?")`
     }
 
     task_instruction += `
@@ -182,21 +181,20 @@ Return in JSON format, structured as follows:
     "response": string,
     "rationale": string
 }
-Property "response": your response to user. Wrap the string in "".
-Property "rationale": explain how you generate your response follow instruction. Wrap the string in "".
+Property "response": your response to user.
+Property "rationale": explain how you generate your response follow instruction.
 `
 
-    console.log("inferReasons", task_instruction)
-
     const _res = await generateResponse(diary, dialog, task_instruction)
-    console.log("inferEmotion", _res)
+    console.log("inferReasons", _res)
 
     try {
         const res = JSON.parse(_res)
         if (!res.response) {
-            throw("Don't return in JSON format")
+            throw ("Don't return in JSON format")
         }
         response.content = res.response
+        saveReasoning(res.rationale, diaryid)
     } catch {
         console.error(_res)
         response.content = _res
@@ -231,7 +229,7 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
             if (diary.people === context.people) similarityScore += 0.25;
             if (diary.time_of_day === context.time_of_day) similarityScore += 0.25;
 
-            if (similarityScore > 0.5) {
+            if (similarityScore >= 0.5) {
                 contextRelevantDiary.push({
                     content: diary.content,
                     similarity: similarityScore,
@@ -347,7 +345,7 @@ User emotions: ${JSON.stringify(emotions)}`
         task_instruction += ` 
 - These are previous diaries and emotions. It will help you to have user's background: 
 ${JSON.stringify(retrievedDiaries)}`
-}
+    }
     task_instruction += `
 - Elaborate the reason why user feel that way in your response.
 Return in JSON format, structured as follows:
@@ -367,9 +365,10 @@ Property "rationale": explain how you generate your response follow instruction.
     try {
         const res = JSON.parse(_res)
         if (!res.response) {
-            throw("Don't return in JSON format")
+            throw ("Don't return in JSON format")
         }
         response.content = res.response
+        saveReasoning(res.rationale, diaryid)
     } catch {
         console.error(_res)
         response.content = _res
@@ -382,8 +381,9 @@ Property "rationale": explain how you generate your response follow instruction.
 
 const generateGoodbye = async (diary, dialog) => {
     const instruction = `You are an expert agent specializing in emotion classification and reasoning, designed to analyze diary with a highly analytical and empathetic approach.
-    If user want to continue the conversation, you should be a active listener, an empathetic friend and response them.
-    If user want to finish conversation say thank and tell them to click Finish button on the top screen to finish section. 
+    - Ask if user have anything want to share.
+    - If user want to continue the conversation, you should be a active listener, an empathetic friend and response them.
+    - If user want to finish conversation say thank and tell them to click Finish button on the top screen to finish section. 
     Response should be shorter than 50 words.`
     const response = {
         error: "",
@@ -421,7 +421,7 @@ const generateResponse = async (diary, dialog, instruction) => {
             },
             ..._dialog
         ]
-        
+
         const chatCompletions = await openai.chat.completions.create({
             messages,
             model: GPT.MODEL,
@@ -490,6 +490,24 @@ Use JSON format with the following properties:
     }
 
     return response
+}
+
+const saveReasoning = async (reasons, diaryid) => {
+    if (!reasons || !diaryid) return
+    let existingDiary;
+
+    try {
+        existingDiary = await Diary.findOne({ _id: diaryid });
+        if (!existingDiary) {
+            throw ("Not found dairy", diaryid)
+        }
+
+        existingDiary.reasons = reasons
+
+        await existingDiary.save();
+    } catch (err) {
+        err && console.error(err);
+    }
 }
 
 module.exports = {

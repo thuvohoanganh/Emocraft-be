@@ -310,9 +310,8 @@ const checkAndFulfillSummary = async (req, res, next) => {
     let from = new Date(oldestDiary.timestamp);
     let to = new Date(newestDiary.timestamp);
     to.setDate(to.getDate() - 1);
-    const weekMarker = [new Date(from)];
+    const weekMarker = [];
 
-    from.setDate(from.getDate() + 7);
     while (from <= to) {
         weekMarker.push(new Date(from));
         from.setDate(from.getDate() + 7);
