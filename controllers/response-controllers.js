@@ -57,12 +57,11 @@ ${JSON.stringify(retrievedDiaries)}`
 
     task_instruction += `
 - Identify user’s emotions in current diary. Only identify 2 or 1 emotion labels. 
-- Try to find emotions in the list that is closely associated with user'emotions. (e.g relief, joy -> calmness, joy)
-Consider emotion in this list: ${emotionList}. Don't include any emotion outside of the list.
+- Try to find emotions in the list that is closely associated with user'emotions (e.g relief, joy -> calmness, joy). Consider emotion in this list: ${emotionList}. Don't include any emotion outside of the list. 
 - Assign labels to property emotions (e.g "emotions": ["calmness", "joy"]).
 - Consider how to say about user's emotions in empathy. Only mention about emotions that you indentified in emotion properties. Response should be shorter than 50 words.
 Example: Sorry to hear that, I guess you feeling are sad about it. Am I right?
-You must feel joy or anxiety in that situation.
+"You must have felt either joy or anxiety in that situation, didn't you?"
 
 Return in JSON format, structured as follows:
 Response must be JSON format:
