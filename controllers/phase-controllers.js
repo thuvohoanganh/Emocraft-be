@@ -75,7 +75,7 @@ const checkReasonClear = async (diary, dialog) => {
     const instruction = `You are a helpful assistant that analyzes the content of the dialog history. 
 Return "true" if all following criteria are satisfied:
 The last user'response totally agree with you.
-User are not sharing more about the reasons make their emotions.
+In the last response, user are not sharing more about the reasons make their emotions.
 Your totally understand the causes of user's emotions.
 
 Otherwise, return "false".
