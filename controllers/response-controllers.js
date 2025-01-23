@@ -166,8 +166,10 @@ Do step by step to figure out why user feel that way:
         task_instruction += ` 
 - Read diaries in similar context to understand how user usually feel. Maybe, user's current feelings caused by the same reasons in the past. These are previous diaries and emotions: 
 ${JSON.stringify(retrievedDiaries)}
-- If the current emotions (${JSON.stringify(emotions)}) is very similar to emotions in the similar context. Infer what is the reason user feel that way and ask user if you understand well. (e.g "I guess you might have felt joyful after jogging because of the sense of accomplishment from achieving your goal. Am I right?")
-- If the currect emotions are different from emotions in the similar context, ask user why this time they feel like this compare to previous scenario. (e.g "You don’t often feel disappointed when meeting friends. Could you tell me more about why you felt that way this time?")`
+- If the current emotions (${JSON.stringify(emotions)}) is very similar to emotions in the similar context. Infer what is the reason user feel that way and ask user if you understand well. 
+(e.g "I guess you might have felt joyful after jogging because of the sense of accomplishment from achieving your goal. Am I right?")
+- If one of the currect emotions are different from emotions in the similar context, ask user why this time they feel like this compare to previous scenario. 
+(e.g "You don’t often feel disappointed when meeting friends. Could you tell me more about why you felt that way this time?")`
     } else {
         task_instruction += ` 
 - Guess the reason why user feel like that in the current context. Tell it to user and ask them is it right in the property response.
