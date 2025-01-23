@@ -159,25 +159,32 @@ const inferReasons = async (userid, diaryid, diary, dialog, emotions) => {
     }
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
 
-    let task_instruction = `You are user's close friend and know their history emotions. You always want to know the causes of user's emotions in their diary.
-Do step by step to figure out why user feel that way:
-- Describe the context of the diary. `
+    let task_instruction = `You are user's close friend and know their history emotions. You are finding reasons behide user's emotions in their diary.
+Current emotions are ${JSON.stringify(emotions)}
+Do step by step to figure out why user feel that way:`
     if (retrievedDiaries.length) {
         task_instruction += ` 
 - Read diaries in similar context to understand how user usually feel. Maybe, user's current feelings caused by the same reasons in the past. These are previous diaries and emotions: 
 ${JSON.stringify(retrievedDiaries)}
-- If the current emotions (${JSON.stringify(emotions)}) is very similar to emotions in the similar context. Infer what is the reason user feel that way and ask user if you understand well. 
+- Consider one by one current emotions and check if that emotion exist in the previous diary or not.
+- If emotion exist in the past. Ask user if they feel the emotion because of the same reasons. 
 (e.g "I guess you might have felt joyful after jogging because of the sense of accomplishment from achieving your goal. Am I right?")
-- If one of the currect emotions are different from emotions in the similar context, ask user why this time they feel like this compare to previous scenario. 
-(e.g "You don’t often feel disappointed when meeting friends. Could you tell me more about why you felt that way this time?")`
+- If emotion doesn't exist in the past, ask user why this time they feel like that. 
+(e.g "You don’t often feel disappointed when meeting friends. Could you tell me more about why you felt that way this time?")
+
+Example: the current context is meeting with professor and labmates. User feel tiredness and joy. In the previous diaries, with the same context meeting with professor and labmates, user feel tired because finding novelty is difficult and feel overwhelmed because there are so many things to do.
+Tiredness existed in the past so maybe the reason is finding novelty. Joy doesn't exist in the past so you should at the reason.
+In the response property, you shoud ask: "You usually feel tired because finding novelty in your research. Is it the same reason for this time?
+I never know that you happy after meeting, why you feel it today?"
+`
     } else {
         task_instruction += ` 
 - Guess the reason why user feel like that in the current context. Tell it to user and ask them is it right in the property response.
-(e.g "Let me guess why you might have felt that way. Could it be that you received positive feedback on a new idea during a meeting with your professor this time as well?")
-- Explain how you generate your response follow step by step instruction in the rationale property. Should be shorter than 50 words.`
+(e.g "Let me guess why you might have felt that way. Could it be that you received positive feedback on a new idea during a meeting with your professor this time as well?")`
     }
 
     task_instruction += `
+- Explain how you generate your response follow step by step instruction in the rationale property. Should be shorter than 50 words.
 Return in JSON format, structured as follows:
 {
     "response": string,
