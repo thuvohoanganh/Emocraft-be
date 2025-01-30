@@ -45,22 +45,22 @@ const askMissingInfor = async (diary, dialog, summary) => {
 const inferEmotion = async (diary, userid, dialog) => {
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, "", diary, dialog)
     const emotionList = await getEmotionList(userid)
+    let pastExample = ""
+    if (retrievedDiaries.length) {
+        pastExample = ` 
+- Read diaries in similar context to understand how user usually feel. Probably, user have same emotions to the past. These are previous diaries and emotions: 
+${JSON.stringify(retrievedDiaries)}
+`}
+
     let task_instruction = `You are user's close friend and know their history emotions. You always want to infer user's emotions in their diary.
 Do step by step to infer user emotion:
-- Describe the context of the diary.`
-
-    if (retrievedDiaries.length) {
-        task_instruction += ` 
-- Read diaries in similar context to understand how user usually feel. Probably, user have same emotions to the past. These are previous diaries and emotions: 
-${JSON.stringify(retrievedDiaries)}`
-    }
-
-    task_instruction += `
+- Describe the context of the diary. ${pastExample}
 - Identify user’s emotions in current diary. Only identify 2 or 1 emotion labels. 
 - Try to find emotions in the list that is closely associated with user'emotions (e.g relief, joy -> calmness, joy). Consider emotion in this list: ${emotionList}. Don't include any emotion outside of the list. 
 - Assign labels to property emotions (e.g "emotions": ["calmness", "joy"]).
 - Consider how to say about user's emotions in empathy. Only mention about emotions that you indentified in emotion properties. Response should be shorter than 50 words.
-Example: Sorry to hear that, I guess you feeling are sad about it. Am I right?
+Example: 
+"Sorry to hear that, I guess you feeling are sad about it. Am I right?"
 "You must have felt either joy or anxiety in that situation, didn't you?"
 
 Return in JSON format, structured as follows:
@@ -83,7 +83,6 @@ Property "rationale": explain how you generate your response follow step by step
     }
 
     const _res = await generateResponse(diary, dialog, task_instruction)
-
     try {
         const res = JSON.parse(_res)
         if (!res.response) {
@@ -159,11 +158,13 @@ const inferReasons = async (userid, diaryid, diary, dialog, emotions) => {
     }
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
 
-    let task_instruction = `You are user's close friend and know their history emotions. You are finding reasons behide user's emotions in their diary.
+    const generalInstruction = `You are user's close friend and know their history emotions. You are finding reasons behide user's emotions in their diary.
 Current emotions are ${JSON.stringify(emotions)}
 Do step by step to figure out why user feel that way:`
+
+    let detailInstruction = ""
     if (retrievedDiaries.length) {
-        task_instruction += ` 
+        detailInstruction = ` 
 - Read diaries in similar context to understand how user usually feel. Maybe, user's current feelings caused by the same reasons in the past. These are previous diaries and emotions: 
 ${JSON.stringify(retrievedDiaries)}
 - Consider one by one current emotions and check if that emotion exist in the previous diary or not.
@@ -174,17 +175,16 @@ ${JSON.stringify(retrievedDiaries)}
 
 Example: the current context is meeting with professor and labmates. User feel tiredness and joy. In the previous diaries, with the same context meeting with professor and labmates, user feel tired because finding novelty is difficult and feel overwhelmed because there are so many things to do.
 Tiredness existed in the past so maybe the reason is finding novelty. Joy doesn't exist in the past so you should at the reason.
-In the response property, you shoud ask: "You usually feel tired because finding novelty in your research. Is it the same reason for this time?
-I never know that you happy after meeting, why you feel it today?"
-`
+In the response property, you should ask: "You usually feel tired because finding novelty in your research. Is it the same reason for this time?
+I never know that you happy after meeting, why you feel it today?"`
     } else {
-        task_instruction += ` 
+        detailInstruction = ` 
 - Guess the reason why user feel like that in the current context. Tell it to user and ask them is it right in the property response.
 (e.g "Let me guess why you might have felt that way. Could it be that you received positive feedback on a new idea during a meeting with your professor this time as well?")`
     }
 
-    task_instruction += `
-- Explain how you generate your response follow step by step instruction in the rationale property. Should be shorter than 50 words.
+    const outputFormat = `
+- Explain why user have those emotions the rationale property.
 Return in JSON format, structured as follows:
 {
     "response": string,
@@ -192,6 +192,7 @@ Return in JSON format, structured as follows:
 }
 `
 
+    const task_instruction = `${generalInstruction} ${detailInstruction} ${outputFormat}`
     const _res = await generateResponse(diary, dialog, task_instruction)
     console.log("inferReasons", _res)
 
@@ -246,7 +247,8 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
                     location: diary.location,
                     people: diary.people,
                     time_of_day: diary.time_of_day,
-                    emotions: diary.emotions
+                    emotions: diary.emotions,
+                    reasons: diary.reasons
                 })
             }
         })
@@ -258,10 +260,6 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
             results = topThree.map(e => ({
                 content: e.content,
                 emotions: e.emotions,
-                activity: e.activity,
-                location: e.location,
-                people: e.people,
-                time_of_day: e.time_of_day,
                 reasons: e.reasons
             }))
         }
@@ -346,16 +344,19 @@ const discussReasons = async (userid, diaryid, diary, dialog, emotions) => {
     }
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
 
-    let task_instruction = `You are user's close friend and know their history emotions. You always want to know the causes of user's emotions in their diary. You're good ask active listening. You listen attentively to a speaker, understand what they're saying, respond and reflect on what's being said, and retain the information for later.
+    const generalInstruction = `You are user's close friend and know their history emotions. You always want to know the causes of user's emotions in their diary. You're good ask active listening. You listen attentively to a speaker, understand what they're saying, respond and reflect on what's being said, and retain the information for later.
 User emotions: ${JSON.stringify(emotions)}`
+
+    let pastExample = ""
     if (retrievedDiaries.length) {
-        task_instruction += ` 
+        pastExample = ` 
 - These are previous diaries and emotions. It will help you to have user's background: 
 ${JSON.stringify(retrievedDiaries)}`
     }
-    task_instruction += `
+    
+    const guildance = `
 - Elaborate the reason why user feel that way in your response.
-- Explain how you generate your response follow step by step instruction in the rationale property. Should be shorter than 50 words.
+- Explain why user have those emotions the rationale property.
 
 Return in JSON format, structured as follows:
 Response must be JSON format:
@@ -364,7 +365,7 @@ Response must be JSON format:
     "rationale": string
 }`
 
-
+    const task_instruction = `${generalInstruction} ${pastExample} ${guildance}`
     const _res = await generateResponse(diary, dialog, task_instruction)
     console.log("discussReasons", _res)
 
