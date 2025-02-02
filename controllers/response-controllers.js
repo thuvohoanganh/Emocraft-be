@@ -1,6 +1,6 @@
 const OpenAI = require("openai")
 const dotenv = require("dotenv")
-const { EMOTION_DIMENSION } = require("../constant");
+const { EMOTION_DIMENSION, TIMES_OF_DAY, PREDEFINED_PEOPLE, PREDEFINED_LOCATION, PREDEFINED_ACTIVITY } = require("../constant");
 const { PHASE_LABEL, GPT } = require('../constant')
 const Diary = require('../models/diary');
 const Statistic = require('../models/statistic');
@@ -20,7 +20,6 @@ const askMissingInfor = async (diary, dialog, summary) => {
     }
     const instruction = `- Given user's dairy and a dialogue summary of what is missing in the memory event.
     - Follow up what user mentioned in the diary.
-    - Summary: ${JSON.stringify(summary)}
     ${!summary.event ? (
             `- Ask user what happend to them.`
         ) : !summary.people ? (
@@ -28,10 +27,11 @@ const askMissingInfor = async (diary, dialog, summary) => {
         ) : !summary.location ? (
             `- Ask user where did the event occurred.`
         ) : !summary.time_of_day ? (
-            `- Guess the key event happened at what time of day (e.g morning, noon, evening, night) and ask user if it is right.`
+            `- Guess the key event happened at what time of day (e.g ${JSON.stringify(Object.values(TIMES_OF_DAY))}) and ask user if it is right.`
         ) : ""}
     - Response should be less than 50 words.
-    - Ask only one question.`
+    - Ask only one question.
+    - Response in Korean.`
     const res = await generateResponse(diary, dialog, instruction)
     if (!res) {
         response.error = "ChatGPT failed"
@@ -72,7 +72,7 @@ Response must be JSON format:
     "rationale": string
 }
 property "emotions": array of emotions
-Property "response": your response to user. 
+Property "response": your response to user in Korean. 
 Property "rationale": explain how you generate your response follow step by step instruction.
 `
     const response = {
@@ -123,7 +123,7 @@ Response must be JSON format:
     "rationale": string
 }
 property "emotions": array of emotions    
-Property "response": your response to user.
+Property "response": your response to user in Korean.
 Property "rationale": explain how you generate your response follow step by step instruction.
 `
 
@@ -181,7 +181,7 @@ Return in JSON format, structured as follows:
     "response": string,
     "rationale": string
 }
-Property "response": your response to user.
+Property "response": your response to user in Korean.
 Property "rationale": explain how you generate your response follow instruction.
 `
 
@@ -354,7 +354,7 @@ Response must be JSON format:
     "response": string,
     "rationale": string
 }
-Property "response": your response to user. 
+Property "response": your response to user in Korean. 
 Property "rationale": explain how you generate your response follow instruction.
 `
 
@@ -384,7 +384,7 @@ const generateGoodbye = async (diary, dialog) => {
     - Ask if user have anything want to share.
     - If user want to continue the conversation, you should be a active listener, an empathetic friend and response them.
     - If user want to finish conversation say thank and tell them to click Finish button on the top screen to finish section. 
-    Response should be shorter than 50 words.`
+    Response should be shorter than 50 words in Korean.`
     const response = {
         error: "",
         phase: PHASE_LABEL.PHASE_6,
@@ -463,12 +463,20 @@ const categorizeContext = async (diary, dialog, userid) => {
     }
 
     const { activity, location, people } = existingCategories
+
+    let activitySet = activity.concat(Object.values(PREDEFINED_ACTIVITY))
+    activitySet = [...new Set(activitySet)]
+    let locationSet = location.concat(Object.values(PREDEFINED_LOCATION))
+    locationSet = [...new Set(locationSet)]
+    let peopleSet = people.concat(Object.values(PREDEFINED_PEOPLE))
+    peopleSet = [...new Set(peopleSet)]
+
     const instruction = `Based on diary and dialog, classify contextual information into category.
 Use JSON format with the following properties:
-- activity: detect key activity in the diary and return the category that it belong to. Consider these category: ${activity || ""}, studying, research, resting, meeting, eating, socializing, leisure activity, exercise, moving. If it doesn't belong to any of those, generate suitable category label. Return only one main activity. Don't return "other".
-- location: detect where did user usually have that emotions and return the category that it belong to. Consider these category: ${location || ""}, home, classroom, library, restaurant, office, laboratory. If it doesn't belong to any of those, generate suitable category label. Return only one location label relate to activity. Don't return "other".
-- people: detect who did cause those emotions and return the category that it belong to. Consider these category: ${people || ""}, alone, family, boyfriend, girlfriend, roommate, friend, colleague, professor. If it doesn't belong to any of those, generate suitable category label. Return only one people label relate to activity. Don't return "other".
-- time_of_day: what time of day did event happen. Only use one of the following: morning, noon, afternoon, evening, night, all_day. Return only one word.
+- activity: detect key activity in the diary and return the category that it belong to. Consider these category: ${JSON.stringify(activitySet)}. If it doesn't belong to any of those, generate suitable category label. Return only one main activity. Don't return "other".
+- location: detect where did user usually have that emotions and return the category that it belong to. Consider these category: ${JSON.stringify(locationSet)}. If it doesn't belong to any of those, generate suitable category label. Return only one location label relate to activity. Don't return "other".
+- people: detect who did cause those emotions and return the category that it belong to. Consider these category: ${JSON.stringify(peopleSet)}. If it doesn't belong to any of those, generate suitable category label. Return only one people label relate to activity. Don't return "other".
+- time_of_day: what time of day did event happen. Only use one of the following: ${JSON.stringify(TIMES_OF_DAY)}. Return only one word.
 - rationale: Describe your rationale on how properties were derived.
     {
         "activity": string | null,

@@ -56,12 +56,12 @@ const writeDiary = async (req, res, next) => {
     const existingDiaryContent = existingDiary ? existingDiary.map(e => e.content) : []
 
     const instruction = `${USER_PERSONA}
-    - Now you are writing your diary of the day.
+    - Now you are writing your diary of the day in Korean.
     - Write about only 1 event. 
     - Diary should less than 50 words. 
     - Don't write the date.
     - Use simple words but natural language. Don't list activities.
-    
+
     ${existingDiary.length > 0 ?
             `These are your previous diaries: ${JSON.stringify(existingDiaryContent)}`
             : ""}
@@ -131,7 +131,8 @@ const userSimulatorResponse = async (req, res, next) => {
     If assisant provide undersanding about your emotions, you can agree or disagree with what assistant said and feedback to them what is your emotion.
     Response should be less than 30 words. 
     Use simple words.
-    Don't start the response with any special characters (e.g !"#$%&'()*+,-./:;<=>? )
+    Don't start the response with any special characters (e.g !"#$%&'()*+,-./:;<=>?)
+    Response in Korean.
     Dialog: ${JSON.stringify(_dialog)}`
 
     const messages = [

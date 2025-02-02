@@ -117,7 +117,7 @@ const chatbotConversation = async (req, res, next) => {
     }
     /* START: generate response */
 
-    if (!!error) {
+    if (error) {
         console.error("chatbotConversation error: ", error)
         const errorResponse = new HttpError(
             'chat fail',

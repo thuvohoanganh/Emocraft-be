@@ -174,8 +174,7 @@ const generateAnalysis = async (diary, dialog, instruction) => {
 
 const getEmotionList = async () => {
     const presetEmotions = Object.values(EMOTION_LABEL)
-    const mergeList = presetEmotions
-    return [...new Set(mergeList)];
+    return presetEmotions;
 }
 
 module.exports = {
