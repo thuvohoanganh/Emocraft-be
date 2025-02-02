@@ -172,7 +172,8 @@ ${JSON.stringify(retrievedDiaries)}
     } else {
         task_instruction += ` 
 - Guess the reason why user feel like that in the current context. Tell it to user and ask them is it right in the property response.
-(e.g "Let me guess why you might have felt that way. Could it be that you received positive feedback on a new idea during a meeting with your professor this time as well?")`
+(e.g "Let me guess why you might have felt that way. Could it be that you received positive feedback on a new idea during a meeting with your professor this time as well?")
+- Explain how you generate your response follow step by step instruction in the rationale property. Should be shorter than 50 words.`
     }
 
     task_instruction += `
@@ -348,6 +349,8 @@ ${JSON.stringify(retrievedDiaries)}`
     }
     task_instruction += `
 - Elaborate the reason why user feel that way in your response.
+- Explain how you generate your response follow step by step instruction in the rationale property. Should be shorter than 50 words.
+
 Return in JSON format, structured as follows:
 Response must be JSON format:
 {
