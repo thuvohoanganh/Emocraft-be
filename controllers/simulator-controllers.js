@@ -6,7 +6,7 @@ const { GPT } = require('../constant');
 const fs = require('fs');
 const { Parser } = require('json2csv');
 const csvParser = require('csv-parser');
-const { getEmotionList } = require('./phase-controllers');
+const { getEmotionList } = require('./response-controllers');
 const { generateResponse } = require('./response-controllers')
 
 const openai = new OpenAI({

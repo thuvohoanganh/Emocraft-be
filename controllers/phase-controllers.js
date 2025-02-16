@@ -1,6 +1,5 @@
 const OpenAI = require("openai")
 const dotenv = require("dotenv")
-const { EMOTION_LABEL } = require("../constant");
 const { PHASE_LABEL, GPT } = require('../constant')
 
 dotenv.config()
@@ -172,15 +171,9 @@ const generateAnalysis = async (diary, dialog, instruction) => {
     return response
 }
 
-const getEmotionList = async () => {
-    const presetEmotions = Object.values(EMOTION_LABEL)
-    return presetEmotions;
-}
-
 module.exports = {
     checkCriteriaExplorePhase,
     checkReasonClear,
-    getEmotionList,
     checkEmotionInferenceAccuracy,
     generateAnalysis
 }

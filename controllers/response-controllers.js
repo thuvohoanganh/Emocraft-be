@@ -1,11 +1,11 @@
 const OpenAI = require("openai")
 const dotenv = require("dotenv")
-const { EMOTION_DIMENSION, TIMES_OF_DAY, PREDEFINED_PEOPLE, PREDEFINED_LOCATION, PREDEFINED_ACTIVITY } = require("../constant");
+const { EMOTION_DIMENSION, TIMES_OF_DAY, PREDEFINED_PEOPLE, PREDEFINED_LOCATION, PREDEFINED_ACTIVITY, EMOTION_LABEL } = require("../constant");
 const { PHASE_LABEL, GPT } = require('../constant')
 const Diary = require('../models/diary');
 const Statistic = require('../models/statistic');
 const { minmaxScaling } = require('../utils');
-const { getEmotionList, generateAnalysis } = require("./phase-controllers");
+const { generateAnalysis } = require("./phase-controllers");
 
 dotenv.config()
 const openai = new OpenAI({
@@ -19,7 +19,6 @@ const askMissingInfor = async (diary, dialog, summary) => {
         content: "",
     }
     const instruction = `- Given user's dairy and a dialogue summary of what is missing in the memory event.
-    - Follow up what user mentioned in the diary.
     ${!summary.event ? (
             `- Ask user what happend to them.`
         ) : !summary.people ? (
@@ -33,6 +32,7 @@ const askMissingInfor = async (diary, dialog, summary) => {
     - Ask only one question.
     - Response in Korean.`
     const res = await generateResponse(diary, dialog, instruction)
+
     if (!res) {
         response.error = "ChatGPT failed"
         return response
@@ -60,7 +60,7 @@ ${JSON.stringify(retrievedDiaries)}`
 - Try to find emotions in the list that is closely associated with user'emotions. (e.g relief, joy -> calmness, joy)
 Consider emotion in this list: ${emotionList}. Don't include any emotion outside of the list.
 - Assign labels to property emotions (e.g "emotions": ["calmness", "joy"]).
-- Consider how to say about user's emotions in empathy. Only mention about emotions that you indentified in emotion properties. Response should be shorter than 50 words.
+- Tell user how you recognize their emotions. Only mention about emotions that you indentified in emotion properties. Response should be shorter than 50 words.
 Example: Sorry to hear that, I guess you feeling are sad about it. Am I right?
 You must feel joy or anxiety in that situation.
 
@@ -521,6 +521,15 @@ const saveReasoning = async (reasons, diaryid) => {
     }
 }
 
+const getEmotionList = async (userid) => {
+    const presetEmotions = Object.values(EMOTION_LABEL)
+    if (!userid) {
+        return presetEmotions
+    }
+    const emotions = await Statistic.distinct( "subcategory", { category: "emotion", userid: userid } )
+    const mergeList = presetEmotions.concat(emotions)
+    return [...new Set(mergeList)];
+}
 module.exports = {
     askMissingInfor,
     reviseEmotionInference,
@@ -530,5 +539,6 @@ module.exports = {
     generateGoodbye,
     discussReasons,
     generateResponse,
+    getEmotionList
 }
 
