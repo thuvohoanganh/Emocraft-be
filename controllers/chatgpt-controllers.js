@@ -4,7 +4,7 @@ const Diary = require('../models/diary');
 const User = require('../models/user');
 const Summary = require('../models/summary');
 const {
-    checkCriteriaExplorePhase,
+    checkMissingContext,
     checkReasonClear,
     checkEmotionInferenceAccuracy
 } = require('./phase-controllers');
@@ -47,7 +47,7 @@ const chatbotConversation = async (req, res, next) => {
 
     /* START: Check criteria in current phase, define the next phase */
     if (currentPhase === PHASE_LABEL.PHASE_1) {
-        const result = await checkCriteriaExplorePhase(diary, dialog)
+        const result = await checkMissingContext(diary, dialog)
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary

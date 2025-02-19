@@ -401,7 +401,7 @@ const consolidate = async (req, res, next) => {
 
             const context_saliency = locationSaliency + peopleSaliency + activitySaliency + timeOfDaySaliency
             let emotionSaliency = 0
-            diary.emotions.forEach(e => {
+            diary.emotions?.forEach(e => {
                 emotionSaliency += statistic['emotion'][e]? 1/statistic['emotion'][e] : 0;
 
             })

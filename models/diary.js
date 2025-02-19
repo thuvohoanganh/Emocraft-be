@@ -36,15 +36,15 @@ const DiarySchema = new mongoose.Schema({
     },
     frequency: {
         type: Number,
-        default: 0
+        default: () => 0
     },
     emotion_retention: {
         type: Number,
-        default: 0
+        default: () => 0
     },
     context_retention: {
         type: Number,
-        default: 0
+        default: () => 0
     },
     createdAt: {
         type: Date,
