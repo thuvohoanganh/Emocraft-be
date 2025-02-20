@@ -5,16 +5,15 @@ const User = require('../models/user');
 const Summary = require('../models/summary');
 const {
     checkMissingContext,
-    checkReasonClear,
-    checkEmotionInferenceAccuracy
+    checkEmotionInferenceAccuracy,
+    checkReasonClear
 } = require('./phase-controllers');
 const {
     askMissingInfor,
-    reviseEmotionInference,
-    inferEmotion,
-    inferReasons,
+    recognizeEmotion,
+    reflectNegativeEmotion,
     generateGoodbye,
-    discussReasons,
+    reflectPositiveEmotion,
 } = require('./response-controllers');
 const { PHASE_LABEL, GPT } = require('../constant')
 const { validationResult } = require('express-validator');
@@ -53,12 +52,17 @@ const chatbotConversation = async (req, res, next) => {
         summary = result.summary
     } 
     else if (currentPhase === PHASE_LABEL.PHASE_2 || currentPhase === PHASE_LABEL.PHASE_3) {
-        const result = await checkEmotionInferenceAccuracy(diary, dialog)
+        const result = await checkEmotionInferenceAccuracy(diary, dialog, diaryid, userid)
         nextPhase = result.next_phase
         error = result.error
     } 
-    else if (currentPhase === PHASE_LABEL.PHASE_4 || currentPhase === PHASE_LABEL.PHASE_5) {
-        const result = await checkReasonClear(diary, dialog)
+    else if (currentPhase === PHASE_LABEL.PHASE_4) {
+        const result = await checkReasonClear(diary, dialog, currentPhase)
+        nextPhase = result.next_phase
+        error = result.error
+    } 
+    else if (currentPhase === PHASE_LABEL.PHASE_5) {
+        const result = await checkReasonClear(diary, dialog, currentPhase)
         nextPhase = result.next_phase
         error = result.error
     } 
@@ -83,27 +87,19 @@ const chatbotConversation = async (req, res, next) => {
         response.content = result.content
     } 
     else if (nextPhase === PHASE_LABEL.PHASE_2) {
-        const result = await inferEmotion(diary, userid, dialog)
+        const result = await recognizeEmotion(diary, userid, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content
-        response.analysis = result.analysis
-    } 
-    else if (nextPhase === PHASE_LABEL.PHASE_3) {
-        const result = await reviseEmotionInference(diary, userid, dialog)
-        error = result.error
-        response.phase = result.phase
-        response.content = result.content
-        response.analysis = result.analysis
-    } 
+    }  
     else if (nextPhase === PHASE_LABEL.PHASE_4) {
-        const result = await inferReasons(userid, diaryid, diary, dialog, emotions)
+        const result = await reflectNegativeEmotion(userid, diaryid, diary, dialog, emotions)
         error = result.error
         response.phase = result.phase
         response.content = result.content
     } 
     else if (nextPhase === PHASE_LABEL.PHASE_5) {
-        const result = await discussReasons(userid, diaryid, diary, dialog, emotions)
+        const result = await reflectPositiveEmotion(userid, diaryid, diary, dialog, emotions)
         error = result.error
         response.phase = result.phase
         response.content = result.content

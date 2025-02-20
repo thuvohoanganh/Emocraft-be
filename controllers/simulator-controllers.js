@@ -30,14 +30,6 @@ Weekend Activities (activity, location, people, time)
 - In afternoon, go to supermarket for food shopping alone or with boyfriend or with roommate.
 - In afternoon, go to Chungang market for clothes shopping alone or with boyfriend or with roommate.`
 
-const DIARY_EXAMPLE = `
-Emotions in daily life: 기쁨, 슬픔, 지루함, 두려움, 짜증
-Example of diary
-content: 오늘은 연구가 너무 안 돼서 짜증이 났다.  계속 오류가 나서 해결하느라 시간을 다 보냈다.  내일은 좀 더 잘 되기를 바란다.
-emotions: [“짜증”, “지루함”]
-reasons: 제가 기대했던 대로 연구가 잘 진행되지 않아 답답합니다. 많은 시간을 들였지만 여전히 좋은 결과를 얻지 못했습니다.`
-
-
 const writeDiary = async (req, res, next) => {
     const { userid } = req.body
     const response = {
@@ -48,7 +40,7 @@ const writeDiary = async (req, res, next) => {
     const existingDiaryContent = existingDiary ? existingDiary.map(e => e.content) : []
 
     const instruction = `${USER_PERSONA}
-    - Now you are writing your diary of the day in Korean.
+    - Now you are writing your diary of the day.
     - Write about only 1 event. 
     - Diary should less than 50 words. 
     - Don't write the date.
@@ -109,36 +101,36 @@ const userSimulatorResponse = async (req, res, next) => {
     const response = {
         content: ""
     }
-    const { dialog, diary } = req.body
+    const { dialog, diary, emotion, reasons } = req.body
 
     const _dialog = dialog.map(e => ({
-        ...e,
+        role: e.role,
         content: JSON.stringify(e.content)
     }))
 
-    const instruction = `##Task##
-You are encountering a conversation with an assistant. An assistant are trying to explore your contextual information and your emotions in your diary to understand you better.
-If assistant ask about location, people or time, response directly and keep it short.
-If they recognize your emotion incorrectly compare to your emotion in diary, you should correct assistant.
-If they recognize your emotion correctly, agree to them.
-If assistant ask "더 나누고 싶은 이야기가 있나요?", say something like 아니, 괜찮아. 더 할 얘기 없어. Paraphase this sentence.
+    const instruction = `In dialog, your role is user. You are encountering a conversation with a assistant. she is trying to explore your contextual information and your emotions in your diary to understand you better.
+Your task is response to her.
+If therapist ask about location, people or time, response directly and keep it short.
+Follow up the conversation.
+Express your emotion in the diary only when assistant try recognize your emotion. 
 
 ##General rules##
-Response should be less than 100 words. 
+Response should be less than 50 words. 
 Use simple words.
-Response in Korean.
 Don't start the response with any special characters (e.g !"#$%&'()*+,-./:;<=>?)
 
 You wrote a diary today: ${diary}.
-Your emotion in the diary: ${`지루함`}
-Dialog: ${JSON.stringify(_dialog)}`
+Your emotion in the diary: ${emotion}.
+Reason you feel like that: ${reasons}.
 
-// ##Persona##
-// ${USER_PERSONA}
+Dialog:
+${JSON.stringify(_dialog)}`
+
+    // console.log(instruction)
     const messages = [
         {
-            role: "system",
-            content: `${instruction}`
+            role: "user",
+            content: `${instruction}`,
         },
     ]
 
@@ -284,7 +276,7 @@ Response must be JSON format:
     "emotions": [string],
     "rationale": string,
 }`
-            const _res = await generateResponse(currentDiary.diary, [], task_instruction)
+            const _res = await generateResponse([], task_instruction)
 
             const res = JSON.parse(_res)
             currentDiary.classification = res.emotions

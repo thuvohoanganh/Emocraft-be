@@ -1,37 +1,22 @@
 const EMOTION_LABEL = {
-    SERENITY: "평온",
     JOY: "기쁨",
-    ECSTASY: "환희",
-    ACCEPTANCE: "수용",
     TRUST: "신뢰",
-    ADMIRATION: "감탄",
-    APPREHENSION: "우려",
     FEAR: "두려움",
-    TERROR: "공포",
-    DISTRACTION: "부주의",
     SURPRISE: "놀람",
-    AMAZEMENT: "깜짝놀람",
-    PENSIVENESS: "수심",
     SADNESS: "슬픔",
-    GRIEF: "비탄",
     BOREDOM: "지루함",
-    DISGUST: "혐오",
-    LOATHING: "증오",
-    ANNOYANCE: "짜증",
     ANGER: "분노",
-    RAGE: "격노",
-    INTEREST: "관심",
-    ANTICIPATION: "기대",
-    VIGILANCE: "주의",
-    // LOVE: "love",
-    // SUBMISSION: "submission",
-    // AWE: "shock",
-    // DISAPPROVAL: "disapproval",
-    // REMORSE: "guilt",
-    // CONTEMPT: "contempt",
-    // AGGRESSIVENESS: "aggressiveness",
-    // OPTIMISM: "optimism"
 };
+
+// const EMOTION_LABEL = {
+//     JOY: "joy",
+//     TRUST: "trust",
+//     FEAR: "fear",
+//     SURPRISE: "surprise",
+//     SADNESS: "sad",
+//     BOREDOM: "bored",
+//     ANGER: "angry",
+// };
 
 const EMOTION_DIMENSION = {
     [EMOTION_LABEL.SERENITY]: 1,
@@ -64,8 +49,8 @@ const PHASE_LABEL = {
     PHASE_1: "beginning",
     PHASE_2: "emotion_classify",
     PHASE_3: "revise_emotion_classify",
-    PHASE_4: "reasoning",
-    PHASE_5: "revise_reasoning",
+    PHASE_4: "reflect_negative_emotion",
+    PHASE_5: "reflect_positive_emotion",
     PHASE_6: "goodbye",
 }
 
