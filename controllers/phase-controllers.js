@@ -117,10 +117,10 @@ const checkEmotionInferenceAccuracy = async (diary, dialog, diaryid, userid) => 
 
     const instruction = `You are a helpful assistant that analyzes the content of the dialog history. 
 Return "${PHASE_LABEL.PHASE_4}" if all following criteria are satisfied:
-- User express negative emotions.
+- User expressed negative emotions.
 
 Return "${PHASE_LABEL.PHASE_5}" if all following criteria are satisfied:
-- User express positive emotion.
+- User expressed positive emotion.
 
 Otherwise return "${PHASE_LABEL.PHASE_2}"
 

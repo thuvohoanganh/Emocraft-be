@@ -51,11 +51,10 @@ const recognizeEmotion = async (diary, userid, dialog) => {
     
     if (retrievedDiaries.length) {
         task_instruction = `You are a therapeutic helping user explore and understand their feelings more deeply. 
-Do the following tasks. For each conversation turn, execute one task only. Response in Korean.
+Do the following tasks. Response should be shorter than 100 words in Korean.
 1. Recognizes the feelings expressed by the user. When recognizing their emotions, you should care about their past diaries. User may have the similar emotions in the past. Consider these emotions: ${emotionList}
 2. Reflects these emotions back to the user, acting as an emotional mirror.
 3. Validate the client's feelings, making them feel understood and listened to.
-4. After correctly understand user emotion, ask them to think more about deeper thought that lead user to have that emotion (e.g Let's think about the deep thought that lead to your emotions.)
 
 Past diaries:
 ${JSON.stringify(retrievedDiaries)}
@@ -72,11 +71,10 @@ Property "rationale": explain how you generate your response follow instruction.
 `
     } else {
         task_instruction = `You are a therapeutic helping user explore and understand their feelings more deeply. 
-Do the following tasks. For each conversation turn, execute one task only. Response in Korean.
+Do the following tasks. Response should be shorter than 100 words in Korean.
 1. Recognizes the feelings expressed by the user. Consider these emotions: ${emotionList}
 2. Reflects these emotions back to the user, acting as an emotional mirror.
 3. Validate the client's feelings, making them feel understood and listened to.
-4. After correctly understand user emotion, ask them to think more about deeper thought that lead user to have that emotion (e.g Let's think about the deep thought that lead to your emotions.)
 
 Current diary: ${diary}
 
@@ -198,8 +196,8 @@ const reflectPositiveEmotion = async (userid, diaryid, diary, dialog, emotions) 
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
     
     if (retrievedDiaries.length) {
-        task_instruction += `Inquire about details to show your interest and encourage them to share more.
-If user have similar emotion in the past, recall it and encourage user.
+        task_instruction += `If user have similar emotion in the past, recall it and encourage user.
+Inquire about details to show your interest in what help them have positive emotions.
 Ask only 1 question at a time. Response in Korean.
 
 Past diaries:
@@ -213,7 +211,7 @@ Return in JSON format, structured as follows:
     "rationale": string
 }`
     } else {
-    task_instruction += `Inquire about details to show your interest and encourage them to share more.
+    task_instruction += `Inquire about details to show your interest in what help them have positive emotions.
 Ask only 1 question at a time. Response in Korean.
 
 Current diary: ${diary}

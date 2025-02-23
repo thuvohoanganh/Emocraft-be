@@ -113,18 +113,18 @@ Your task is response to her.
 If therapist ask about location, people or time, response directly and keep it short.
 Follow up the conversation.
 Express your emotion in the diary only when assistant try recognize your emotion. 
-
+If therapist ask some thing like "더 나누고 싶은 이야기가 있으신가요?", say thank you, you don't have other thing to say.
 ##General rules##
 Response should be less than 50 words. 
 Use simple words.
-Don't start the response with any special characters (e.g !"#$%&'()*+,-./:;<=>?)
+Don't start the response with any special characters (e.g \")
 
 You wrote a diary today: ${diary}.
 Your emotion in the diary: ${emotion}.
-Reason you feel like that: ${reasons}.
 
 Dialog:
 ${JSON.stringify(_dialog)}`
+// Reason you feel like that: ${reasons}.
 
     // console.log(instruction)
     const messages = [
@@ -155,7 +155,7 @@ ${JSON.stringify(_dialog)}`
     }
 
 
-    response.content = response.content.replace(/^\"+|\"+$/gm, '')
+    response.content = response.content.replace(/\"+|\"+$/gm, '')
 
     res.status(200).json({
         data: response
