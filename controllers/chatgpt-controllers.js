@@ -4,22 +4,25 @@ const Diary = require('../models/diary');
 const User = require('../models/user');
 const Summary = require('../models/summary');
 const {
-    checkCriteriaExplorePhase,
-    checkReasonClear,
-    checkEmotionInferenceAccuracy
+    checkMissingContext,
+    checkEmotionInferenceAccuracy,
+    checkReasonClear
 } = require('./phase-controllers');
 const {
     askMissingInfor,
-    reviseEmotionInference,
-    inferEmotion,
-    inferReasons,
+    recognizeEmotion,
+    reflectNegativeEmotion,
     generateGoodbye,
-    discussReasons,
+    reflectPositiveEmotion,
 } = require('./response-controllers');
 const { PHASE_LABEL, GPT } = require('../constant')
 const { validationResult } = require('express-validator');
 const chalk = require('chalk');
-
+const {
+    recognizeEmotionNoMem,
+    reflectNegativeEmotionNoMem,
+    reflectPositiveEmotionNoMem,
+} = require('./response-no-memory-controllers')
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -47,18 +50,23 @@ const chatbotConversation = async (req, res, next) => {
 
     /* START: Check criteria in current phase, define the next phase */
     if (currentPhase === PHASE_LABEL.PHASE_1) {
-        const result = await checkCriteriaExplorePhase(diary, dialog)
+        const result = await checkMissingContext(diary, dialog)
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
     } 
     else if (currentPhase === PHASE_LABEL.PHASE_2 || currentPhase === PHASE_LABEL.PHASE_3) {
-        const result = await checkEmotionInferenceAccuracy(diary, dialog)
+        const result = await checkEmotionInferenceAccuracy(diary, dialog, diaryid, userid)
         nextPhase = result.next_phase
         error = result.error
     } 
-    else if (currentPhase === PHASE_LABEL.PHASE_4 || currentPhase === PHASE_LABEL.PHASE_5) {
-        const result = await checkReasonClear(diary, dialog)
+    else if (currentPhase === PHASE_LABEL.PHASE_4) {
+        const result = await checkReasonClear(diary, dialog, currentPhase)
+        nextPhase = result.next_phase
+        error = result.error
+    } 
+    else if (currentPhase === PHASE_LABEL.PHASE_5) {
+        const result = await checkReasonClear(diary, dialog, currentPhase)
         nextPhase = result.next_phase
         error = result.error
     } 
@@ -83,27 +91,19 @@ const chatbotConversation = async (req, res, next) => {
         response.content = result.content
     } 
     else if (nextPhase === PHASE_LABEL.PHASE_2) {
-        const result = await inferEmotion(diary, userid, dialog)
+        const result = await recognizeEmotion(diary, userid, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content
-        response.analysis = result.analysis
-    } 
-    else if (nextPhase === PHASE_LABEL.PHASE_3) {
-        const result = await reviseEmotionInference(diary, userid, dialog)
-        error = result.error
-        response.phase = result.phase
-        response.content = result.content
-        response.analysis = result.analysis
-    } 
+    }  
     else if (nextPhase === PHASE_LABEL.PHASE_4) {
-        const result = await inferReasons(userid, diaryid, diary, dialog, emotions)
+        const result = await reflectNegativeEmotion(userid, diaryid, diary, dialog, emotions)
         error = result.error
         response.phase = result.phase
         response.content = result.content
     } 
     else if (nextPhase === PHASE_LABEL.PHASE_5) {
-        const result = await discussReasons(userid, diaryid, diary, dialog, emotions)
+        const result = await reflectPositiveEmotion(userid, diaryid, diary, dialog, emotions)
         error = result.error
         response.phase = result.phase
         response.content = result.content
@@ -117,7 +117,7 @@ const chatbotConversation = async (req, res, next) => {
     }
     /* START: generate response */
 
-    if (!!error) {
+    if (error) {
         console.error("chatbotConversation error: ", error)
         const errorResponse = new HttpError(
             'chat fail',
@@ -422,9 +422,120 @@ const getWeeklySummary = async (req, res, next) => {
     res.status(200).json(summary);
 }
 
+const chatbotConversationNoMem = async (req, res, next) => {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+        console.error("chatbotConversation err:", errors)
+        return next(
+            new HttpError(JSON.stringify(errors), 422)
+        );
+    }
+
+    const {userid, diaryid, diary, dialog, phase: currentPhase, emotions } = req.body
+    let response = {
+        phase: "",
+        content: "",
+        analysis: null,
+    }
+    let error = null
+    let nextPhase = currentPhase
+    let summary = null
+
+    /* START: Check criteria in current phase, define the next phase */
+    if (currentPhase === PHASE_LABEL.PHASE_1) {
+        const result = await checkMissingContext(diary, dialog)
+        nextPhase = result.next_phase
+        error = result.error
+        summary = result.summary
+    } 
+    else if (currentPhase === PHASE_LABEL.PHASE_2 || currentPhase === PHASE_LABEL.PHASE_3) {
+        const result = await checkEmotionInferenceAccuracy(diary, dialog, diaryid, userid)
+        nextPhase = result.next_phase
+        error = result.error
+    } 
+    else if (currentPhase === PHASE_LABEL.PHASE_4) {
+        const result = await checkReasonClear(diary, dialog, currentPhase)
+        nextPhase = result.next_phase
+        error = result.error
+    } 
+    else if (currentPhase === PHASE_LABEL.PHASE_5) {
+        const result = await checkReasonClear(diary, dialog, currentPhase)
+        nextPhase = result.next_phase
+        error = result.error
+    } 
+
+    if (!!error) {
+        console.error(error)
+        const _error = new HttpError(
+            'chat fail',
+            500
+        );
+        return next(_error);
+    }
+    /* END: Check criteria in current phase, define the next phase */
+
+    console.log("nextPhase", nextPhase)
+
+    /* START: Generate response */
+    if (nextPhase === PHASE_LABEL.PHASE_1) {
+        const result = await askMissingInfor(diary, dialog, summary)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+    } 
+    else if (nextPhase === PHASE_LABEL.PHASE_2) {
+        const result = await recognizeEmotionNoMem(diary, userid, dialog)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+    }  
+    else if (nextPhase === PHASE_LABEL.PHASE_4) {
+        const result = await reflectNegativeEmotionNoMem(userid, diaryid, diary, dialog, emotions)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+    } 
+    else if (nextPhase === PHASE_LABEL.PHASE_5) {
+        const result = await reflectPositiveEmotionNoMem(userid, diaryid, diary, dialog, emotions)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+        response.analysis = result.analysis
+    }
+    else if (nextPhase === PHASE_LABEL.PHASE_6) {
+        const result = await generateGoodbye(diary, dialog)
+        error = result.error
+        response.phase = result.phase
+        response.content = result.content
+    }
+    /* START: generate response */
+
+    if (error) {
+        console.error("chatbotConversation error: ", error)
+        const errorResponse = new HttpError(
+            'chat fail',
+            500
+        );
+        return next(errorResponse);
+    }
+
+    if (response.content?.[0] === "") {
+        response.content = response.content.replace(/^\"+|\"+$/gm,'')
+    }
+
+    console.log("response", response)
+    console.log('------------------------------')
+    res.status(200).json({
+        data: response
+    });
+    return
+}
+
 module.exports = {
     chatbotConversation,
     checkAndFulfillSummary,
     getWeeklySummaries,
-    getWeeklySummary
+    getWeeklySummary,
+    chatbotConversationNoMem
 }

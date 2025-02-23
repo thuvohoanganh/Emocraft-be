@@ -6,45 +6,29 @@ const { GPT } = require('../constant');
 const fs = require('fs');
 const { Parser } = require('json2csv');
 const csvParser = require('csv-parser');
-const { getEmotionList } = require('./phase-controllers');
+const { getEmotionList } = require('./response-controllers');
 const { generateResponse } = require('./response-controllers')
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-const USER_PERSONA = `Name: Thu Vo
-Role: Graduate Student in Computer Science
-
-## Background and Habits:
-Thu is in their second year of a master’s program in computer science. She's highly introspective and value self-awareness, often using their daily diary as a space to explore and reflect on their emotions. Thu believes that understanding their emotional states helps them manage stress better and enhances their focus on academic projects.
-
-## Hobbies and interests
-shopping food clothes, surfing facebook, traveling
-
-## Relationship
-She have a boyfriend and they meet at dinner everyday. She have a lovely female roomate who she can talk to everyday and express her feelings. 
-She usually work with Phd students named Yugyeong and Guywon - her labmate. They are very supportive. She struggles in doing research and her labmates help her a lot.
-
-## Personality
-She is ITTP. She is an introvert, like cute things. She is easily get tired and overwhelmed when doing a lot of things at the same time.
-
-## Daily Schedule
-Wake up, go to lab
-Work on reseach project
-Have lunch with labmates
-Have meeting with PhD students and professor about research project
-Have dinner with her boyfriend
-Study in the room until 11:00 PM
-Surf facebook, watch video for entertainment; bedtime around 12:00 PM
-
-## Weekend Activities
-Keep working on research project in the room.
-Go to supermarket for food shopping
-Sometimes, she go to Chungang market for clothes shopping`
-
-
-
+const USER_PERSONA = `Gender: female
+Educational background: second year of a master’s program in computer science.
+Hobbies: shopping food, clothes, surfing facebook, traveling
+Relationship: She have a boyfriend and they meet at dinner everyday. She have a lovely female roommate who she can talk to everyday and express her feelings. She usually work with Phd students named Yugyeong and Guywon - her labmate. They are very supportive. She struggles in doing research and her labmates help her a lot.
+Personality traits: She is ISTP. She is an introvert, like cute things. She is easily get tired and overwhelmed when doing a lot of things at the same time.
+Daily Schedule (activity, location, people, time):
+- In the morning, go to lab and work on research project
+- Have lunch with labmates
+- In the afternoon, have meeting with PhD students and professor about research project
+- Have dinner with her boyfriend
+- Study in the room until 11:00 PM
+- Surf facebook, watch video for entertainment; bedtime around 12:00 PM
+Weekend Activities (activity, location, people, time)
+- In the morning, Keep working on research project in the room.
+- In afternoon, go to supermarket for food shopping alone or with boyfriend or with roommate.
+- In afternoon, go to Chungang market for clothes shopping alone or with boyfriend or with roommate.`
 
 const writeDiary = async (req, res, next) => {
     const { userid } = req.body
@@ -61,7 +45,7 @@ const writeDiary = async (req, res, next) => {
     - Diary should less than 50 words. 
     - Don't write the date.
     - Use simple words but natural language. Don't list activities.
-    
+
     ${existingDiary.length > 0 ?
             `These are your previous diaries: ${JSON.stringify(existingDiaryContent)}`
             : ""}
@@ -77,7 +61,7 @@ const writeDiary = async (req, res, next) => {
     try {
         const chatCompletions = await openai.chat.completions.create({
             messages,
-            model: GPT.MODEL,
+            model: GPT.MODEL_USER,
             temperature: 0.7
         });
 
@@ -117,34 +101,43 @@ const userSimulatorResponse = async (req, res, next) => {
     const response = {
         content: ""
     }
-    const { dialog, diary } = req.body
+    const { dialog, diary, emotion, reasons } = req.body
 
     const _dialog = dialog.map(e => ({
-        ...e,
+        role: e.role,
         content: JSON.stringify(e.content)
     }))
 
-    const instruction = `${USER_PERSONA}
-    You wrote a diary today: ${diary}.
-    You are encountering a conversation with an assistant. An assistant are trying to explore your contextual information and your emotions in your diary to understand you better.
-    Your role is the user and your task is responding to the role assistant in the dialog. 
-    If assisant provide undersanding about your emotions, you can agree or disagree with what assistant said and feedback to them what is your emotion.
-    Response should be less than 30 words. 
-    Use simple words.
-    Don't start the response with any special characters (e.g !"#$%&'()*+,-./:;<=>? )
-    Dialog: ${JSON.stringify(_dialog)}`
+    const instruction = `In dialog, your role is user. You are encountering a conversation with a assistant. she is trying to explore your contextual information and your emotions in your diary to understand you better.
+Your task is response to her.
+If therapist ask about location, people or time, response directly and keep it short.
+Follow up the conversation.
+Express your emotion in the diary only when assistant try recognize your emotion. 
+If therapist ask some thing like "더 나누고 싶은 이야기가 있으신가요?", say thank you, you don't have other thing to say.
+##General rules##
+Response should be less than 50 words. 
+Use simple words.
+Don't start the response with any special characters (e.g \")
 
+You wrote a diary today: ${diary}.
+Your emotion in the diary: ${emotion}.
+
+Dialog:
+${JSON.stringify(_dialog)}`
+// Reason you feel like that: ${reasons}.
+
+    // console.log(instruction)
     const messages = [
         {
-            role: "system",
-            content: `${instruction}`
+            role: "user",
+            content: `${instruction}`,
         },
     ]
 
     try {
         const chatCompletions = await openai.chat.completions.create({
             messages,
-            model: GPT.MODEL,
+            model: GPT.MODEL_USER,
             temperature: 1
         });
 
@@ -162,7 +155,7 @@ const userSimulatorResponse = async (req, res, next) => {
     }
 
 
-    response.content = response.content.replace(/^\"+|\"+$/gm, '')
+    response.content = response.content.replace(/\"+|\"+$/gm, '')
 
     res.status(200).json({
         data: response
@@ -283,7 +276,7 @@ Response must be JSON format:
     "emotions": [string],
     "rationale": string,
 }`
-            const _res = await generateResponse(currentDiary.diary, [], task_instruction)
+            const _res = await generateResponse([], task_instruction)
 
             const res = JSON.parse(_res)
             currentDiary.classification = res.emotions

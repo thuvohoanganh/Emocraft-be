@@ -218,12 +218,11 @@ const encode = async (req, res, next) => {
 
     try {
         existingDiary = await Diary.findOne({ _id: diaryid, userid: userid });
-        if (!existingDiary) next(new HttpError(
+        if (!existingDiary) return next(new HttpError(
             'Diary does not exist',
             400
         ))
 
-        if (emotions !== undefined) existingDiary.emotions = emotions;
         if (dialog !== undefined) existingDiary.dialog = JSON.stringify(dialog);
 
         await existingDiary.save();
@@ -401,7 +400,7 @@ const consolidate = async (req, res, next) => {
 
             const context_saliency = locationSaliency + peopleSaliency + activitySaliency + timeOfDaySaliency
             let emotionSaliency = 0
-            diary.emotions.forEach(e => {
+            diary.emotions?.forEach(e => {
                 emotionSaliency += statistic['emotion'][e]? 1/statistic['emotion'][e] : 0;
 
             })
