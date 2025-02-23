@@ -1,11 +1,28 @@
 const EMOTION_LABEL = {
+    SERENITY: "평온",
     JOY: "기쁨",
+    ECSTASY: "환희",
+    ACCEPTANCE: "수용",
     TRUST: "신뢰",
+    ADMIRATION: "감탄",
+    APPREHENSION: "우려",
     FEAR: "두려움",
+    TERROR: "공포",
+    DISTRACTION: "부주의",
     SURPRISE: "놀람",
+    AMAZEMENT: "깜짝놀람",
+    PENSIVENESS: "수심",
     SADNESS: "슬픔",
+    GRIEF: "비탄",
     BOREDOM: "지루함",
+    DISGUST: "혐오",
+    LOATHING: "증오",
+    ANNOYANCE: "짜증",
     ANGER: "분노",
+    RAGE: "격노",
+    INTEREST: "관심",
+    ANTICIPATION: "기대",
+    VIGILANCE: "주의",
 };
 
 // const EMOTION_LABEL = {
