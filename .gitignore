@@ -1,6 +1,5 @@
 node_modules/
 uploads/
 .env
-.atlas.env
-.iclab.env
+.*.env
 /dataset
