@@ -1,0 +1,30 @@
+services:
+  mongodbContainer:
+    image: mongodb/mongodb-atlas-local
+    environment:
+      - MONGODB_INITDB_ROOT_USERNAME=user
+      - MONGODB_INITDB_ROOT_PASSWORD=pass
+    ports:
+      - 27018:27017
+    networks:
+      - mongodb-nodejs-network
+    volumes:
+      - data:/data/db
+  
+  backend:
+    image: thuvo/emocraft
+    ports:
+      - "8000:8000"
+    networks: # adding network
+      - mongodb-nodejs-network
+    depends_on:
+      - mongodbContainer
+    env_file: ./Emocraft-be/.prod.env
+
+networks: # allow services to talk to each other while providing isolation from other docker container, running on the same host
+  mongodb-nodejs-network:
+    driver: bridge
+
+volumes: # enable persistence of database data across container restart
+  data:
+    driver: local
