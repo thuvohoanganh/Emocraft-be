@@ -48,7 +48,7 @@ const recognizeEmotion = async (diary, userid, dialog) => {
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, "", diary, dialog)
     const emotionList = await getEmotionList(userid)
     let task_instruction = ""
-    
+
     if (retrievedDiaries.length) {
         task_instruction = `You are a therapeutic helping user explore and understand their feelings more deeply. 
 Do the following tasks. Response should be shorter than 100 words in Korean.
@@ -126,7 +126,7 @@ const reflectNegativeEmotion = async (userid, diaryid, diary, dialog, emotions) 
     }
     let task_instruction = ""
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
-    
+
     if (retrievedDiaries.length) {
         task_instruction += `Your task is helping user reflect the reason of their emotions.
 Do the following tasks. For each conversation turn, execute one task only. Response in Korean.
@@ -148,7 +148,7 @@ Return in JSON format, structured as follows:
     "rationale": string
 }`
     } else {
-    task_instruction += `Your task is helping user reflect the reason of their emotions.
+        task_instruction += `Your task is helping user reflect the reason of their emotions.
 Do the following tasks. For each conversation turn, execute one task only. Response in Korean.
 1. Describe what maybe the reason of user's emotion and ask for validation from user.
 2. Your task is challenge the negative thought by questioning its validity and looking for evidence
@@ -195,7 +195,7 @@ const reflectPositiveEmotion = async (userid, diaryid, diary, dialog, emotions) 
     }
     let task_instruction = ""
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
-    
+
     if (retrievedDiaries.length) {
         task_instruction = `If user have similar emotion in the past, recall it and encourage user.
 Inquire about details to show your interest in what help them have positive emotions.
@@ -212,7 +212,7 @@ Return in JSON format, structured as follows:
     "rationale": string
 }`
     } else {
-    task_instruction = `Inquire about details to show your interest in what help them have positive emotions.
+        task_instruction = `Inquire about details to show your interest in what help them have positive emotions.
 Ask only 1 question at a time. Response in Korean.
 
 Current diary: ${diary}
@@ -255,7 +255,7 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
             return results
         }
         const query = diaryid ? { userid: userid, _id: { $ne: diaryid } } : { userid: userid }
-        diaries = await Diary.find(query);
+        let diaries = await Diary.find(query);
         if (!diaries) {
             return results
         }
@@ -430,7 +430,7 @@ const getEmotionList = async (userid) => {
     if (!userid) {
         return presetEmotions
     }
-    const emotions = await Statistic.distinct( "subcategory", { category: "emotion", userid: userid } )
+    const emotions = await Statistic.distinct("subcategory", { category: "emotion", userid: userid })
     const mergeList = presetEmotions.concat(emotions)
     return [...new Set(mergeList)];
 }
@@ -439,12 +439,12 @@ const createEmbedding = async (text) => {
     let cleanedText = text.replace("\n", " ")
     try {
         const embeddings = await openai.embeddings.create({
-            input: [cleanedText], 
+            input: [cleanedText],
             model: GPT.EMBEDDING_MODEL
         });
 
         response = embeddings.data[0].embedding
-        console.log(response)
+        // console.log(response)
         if (!response) {
             throw ("no response from ChatGPT")
         }
@@ -455,6 +455,54 @@ const createEmbedding = async (text) => {
     }
 }
 
+const retrieveSimilarDiary = async (userid, diary) => {
+    let results = []
+    const queryVector = await createEmbedding(diary)
+
+    try {
+        let contextRelevantDiary = await Diary.aggregate([
+            {
+                "$vectorSearch": {
+                    "index": "vector_index",
+                    "limit": 3,
+                    "numCandidates": 3,
+                    "path": "embeddings",
+                    "queryVector": queryVector,
+                    // "filter": {
+                    //     "userid": userid
+                    // }
+                }
+            },
+            {
+                "$project": {
+                    "content": 1,  // Include these fields
+                    "emotions": 1,
+                    "reasons": 1,
+                    "score": { "$meta": "vectorSearchScore" }
+                }
+            }
+        ]);
+
+        if (contextRelevantDiary.length > 0) {
+            results = contextRelevantDiary.map(e => ({
+                content: e.content,
+                emotions: e.emotions,
+                reasons: e.reasons
+            }))
+        }
+        console.log("topThree context", contextRelevantDiary)
+    } catch (err) {
+        err && console.error(err);
+        return results
+    }
+    return results
+}
+
+// retrieveSimilarDiary(
+//     "67bc83cb82206a86a9ea3ee8",
+//     "오늘 아침, 햇살이 너무 따스해서 기분이 좋았다. 창가에 앉아 커피를 마시며 하루를 시작하니, 마치 휴가를 온 듯한 느낌이었다."
+// )
+
 module.exports = {
     askMissingInfor,
     recognizeEmotion,
@@ -464,6 +512,7 @@ module.exports = {
     reflectPositiveEmotion,
     generateResponse,
     getEmotionList,
-    createEmbedding
+    createEmbedding,
+    retrieveSimilarDiary
 }
 
