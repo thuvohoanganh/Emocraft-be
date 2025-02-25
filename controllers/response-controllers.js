@@ -434,6 +434,27 @@ const getEmotionList = async (userid) => {
     const mergeList = presetEmotions.concat(emotions)
     return [...new Set(mergeList)];
 }
+
+const createEmbedding = async (text) => {
+    let cleanedText = text.replace("\n", " ")
+    try {
+        const embeddings = await openai.embeddings.create({
+            input: [cleanedText], 
+            model: GPT.EMBEDDING_MODEL
+        });
+
+        response = embeddings.data[0].embedding
+        console.log(response)
+        if (!response) {
+            throw ("no response from ChatGPT")
+        }
+        return response
+    } catch (err) {
+        console.log(err)
+        return []
+    }
+}
+
 module.exports = {
     askMissingInfor,
     recognizeEmotion,
@@ -442,6 +463,7 @@ module.exports = {
     generateGoodbye,
     reflectPositiveEmotion,
     generateResponse,
-    getEmotionList
+    getEmotionList,
+    createEmbedding
 }
 

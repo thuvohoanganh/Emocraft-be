@@ -73,7 +73,8 @@ const PHASE_LABEL = {
 
 const GPT = {
     MODEL: "gpt-4o-2024-08-06",
-    MODEL_USER: "gpt-4o-mini"
+    MODEL_USER: "gpt-4o-mini",
+    EMBEDDING_MODEL: "text-embedding-3-small"
 }
 
 const PREDEFINED_LOCATION = {

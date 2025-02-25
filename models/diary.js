@@ -46,6 +46,9 @@ const DiarySchema = new mongoose.Schema({
         type: Number,
         default: () => 0
     },
+    embeddings: {
+        type: [Number]
+    },
     createdAt: {
         type: Date,
         default: Date.now

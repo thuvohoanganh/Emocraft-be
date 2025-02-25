@@ -3,7 +3,7 @@ const Statistic = require('../models/statistic');
 const User = require('../models/user');
 const HttpError = require('../models/http-error');
 const { validationResult } = require('express-validator');
-const { categorizeContext } = require('./response-controllers');
+const { categorizeContext, createEmbedding } = require('./response-controllers');
 const { minmaxScaling } = require('../utils');
 
 const createDiary = async (req, res, next) => {
@@ -16,13 +16,15 @@ const createDiary = async (req, res, next) => {
     }
 
     const { userid, timestamp, content } = req.body;
-
+    let embeddings = []
     let newDiary;
     try {
+        embeddings = await createEmbedding(content)
         newDiary = new Diary({
             userid,
             timestamp,
             content,
+            embeddings
         });
         await newDiary.save();
     } catch (err) {
