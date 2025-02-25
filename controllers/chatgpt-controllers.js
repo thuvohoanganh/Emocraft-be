@@ -61,12 +61,12 @@ const chatbotConversation = async (req, res, next) => {
         error = result.error
     } 
     else if (currentPhase === PHASE_LABEL.PHASE_4) {
-        const result = await checkReasonClear(diary, dialog, currentPhase)
+        const result = await checkReasonClear(diary, dialog, currentPhase, diaryid)
         nextPhase = result.next_phase
         error = result.error
     } 
     else if (currentPhase === PHASE_LABEL.PHASE_5) {
-        const result = await checkReasonClear(diary, dialog, currentPhase)
+        const result = await checkReasonClear(diary, dialog, currentPhase, diaryid)
         nextPhase = result.next_phase
         error = result.error
     } 
@@ -455,12 +455,12 @@ const chatbotConversationNoMem = async (req, res, next) => {
         error = result.error
     } 
     else if (currentPhase === PHASE_LABEL.PHASE_4) {
-        const result = await checkReasonClear(diary, dialog, currentPhase)
+        const result = await checkReasonClear(diary, dialog, currentPhase, diaryid)
         nextPhase = result.next_phase
         error = result.error
     } 
     else if (currentPhase === PHASE_LABEL.PHASE_5) {
-        const result = await checkReasonClear(diary, dialog, currentPhase)
+        const result = await checkReasonClear(diary, dialog, currentPhase, diaryid)
         nextPhase = result.next_phase
         error = result.error
     } 

@@ -91,7 +91,6 @@ Property "rationale": explain how you generate your response follow instruction.
             throw ("Don't return in JSON format")
         }
         response.content = res.response
-        saveReasoning(res.rationale, diaryid)
     } catch {
         console.error(_res)
         response.content = _res
@@ -130,7 +129,6 @@ Property "rationale": explain how you generate your response follow instruction.
             throw ("Don't return in JSON format")
         }
         response.content = res.response
-        saveReasoning(res.rationale, diaryid)
     } catch {
         console.error(_res)
         response.content = _res
@@ -174,24 +172,6 @@ const generateResponse = async (dialog, instruction) => {
 
     response = response.replace(/json|\`\`\`+/gm, '')
     return response
-}
-
-const saveReasoning = async (reasons, diaryid) => {
-    if (!reasons || !diaryid) return
-    let existingDiary;
-
-    try {
-        existingDiary = await Diary.findOne({ _id: diaryid });
-        if (!existingDiary) {
-            throw ("Not found dairy", diaryid)
-        }
-
-        existingDiary.reasons = reasons
-
-        await existingDiary.save();
-    } catch (err) {
-        err && console.error(err);
-    }
 }
 
 const getEmotionList = async (userid) => {

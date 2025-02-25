@@ -20,7 +20,7 @@ Relationship: She have a boyfriend and they meet at dinner everyday. She have a 
 Personality traits: She is ISTP. She is an introvert, like cute things. She is easily get tired and overwhelmed when doing a lot of things at the same time.
 Daily Schedule (activity, location, people, time):
 - In the morning, go to lab and work on research project
-- Have lunch with labmates
+- Have lunch with labmates in the canteen
 - In the afternoon, have meeting with PhD students and professor about research project
 - Have dinner with her boyfriend
 - Study in the room until 11:00 PM
@@ -28,7 +28,11 @@ Daily Schedule (activity, location, people, time):
 Weekend Activities (activity, location, people, time)
 - In the morning, Keep working on research project in the room.
 - In afternoon, go to supermarket for food shopping alone or with boyfriend or with roommate.
-- In afternoon, go to Chungang market for clothes shopping alone or with boyfriend or with roommate.`
+- In afternoon, go to Chungang market for clothes shopping alone or with boyfriend or with roommate.
+Emotions in daily life: 기쁨, 슬픔, 지루함, 두려움, 짜증
+
+##Example of diary##
+오늘은 연구가 너무 안 돼서 짜증이 났다.  계속 오류가 나서 해결하느라 시간을 다 보냈다.  내일은 좀 더 잘 되기를 바란다.`
 
 const writeDiary = async (req, res, next) => {
     const { userid } = req.body
@@ -36,15 +40,20 @@ const writeDiary = async (req, res, next) => {
         content: ""
     }
 
-    const existingDiary = await Diary.find({ userid });
+    const existingDiary = await Diary.find({ userid }).sort({ _id: -1 }).limit(4);
     const existingDiaryContent = existingDiary ? existingDiary.map(e => e.content) : []
 
-    const instruction = `${USER_PERSONA}
-    - Now you are writing your diary of the day.
-    - Write about only 1 event. 
-    - Diary should less than 50 words. 
-    - Don't write the date.
-    - Use simple words but natural language. Don't list activities.
+    const instruction = `##Task##
+You are the given persona. You are writing a diary in Korean.
+Do the following steps:
+- Predefine emotions for diaries. Used emotions of persona’s emotions in daily life. One emotion for one diary. 
+- Write a diary based on predefined emotion. Don’t explicitly express emotions in diary. Write about only 1 episode. Diary should be less than 100 words and at least 3 sentences. Don't write the date in the content. Use simple words but natural language. Don't list activities.
+- Return only the content of diary
+
+##Input##
+${USER_PERSONA}
+
+
 
     ${existingDiary.length > 0 ?
             `These are your previous diaries: ${JSON.stringify(existingDiaryContent)}`
@@ -120,10 +129,10 @@ Use simple words.
 Don't start the response with any special characters (e.g \")
 
 You wrote a diary today: ${diary}.
-Your emotion in the diary: ${emotion}.
 
 Dialog:
 ${JSON.stringify(_dialog)}`
+// Your emotion in the diary: ${emotion}.
 // Reason you feel like that: ${reasons}.
 
     // console.log(instruction)

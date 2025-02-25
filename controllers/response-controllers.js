@@ -85,7 +85,8 @@ Return in JSON format, structured as follows:
     "emotions": [string]
 }
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.`
+Property "rationale": explain how you generate your response follow instruction.
+Property "emotions": no more than 2 emotions.`
     }
 
     const response = {
@@ -175,7 +176,6 @@ Property "rationale": explain how you generate your response follow instruction.
             throw ("Don't return in JSON format")
         }
         response.content = res.response
-        saveReasoning(res.rationale, diaryid)
     } catch {
         console.error(_res)
         response.content = _res
@@ -196,7 +196,7 @@ const reflectPositiveEmotion = async (userid, diaryid, diary, dialog, emotions) 
     const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
     
     if (retrievedDiaries.length) {
-        task_instruction += `If user have similar emotion in the past, recall it and encourage user.
+        task_instruction = `If user have similar emotion in the past, recall it and encourage user.
 Inquire about details to show your interest in what help them have positive emotions.
 Ask only 1 question at a time. Response in Korean.
 
@@ -211,7 +211,7 @@ Return in JSON format, structured as follows:
     "rationale": string
 }`
     } else {
-    task_instruction += `Inquire about details to show your interest in what help them have positive emotions.
+    task_instruction = `Inquire about details to show your interest in what help them have positive emotions.
 Ask only 1 question at a time. Response in Korean.
 
 Current diary: ${diary}
@@ -234,7 +234,6 @@ Property "rationale": explain how you generate your response follow instruction.
             throw ("Don't return in JSON format")
         }
         response.content = res.response
-        saveReasoning(res.rationale, diaryid)
     } catch {
         console.error(_res)
         response.content = _res
@@ -424,24 +423,6 @@ Dialog: ${JSON.stringify(dialog)}    `
     }
 
     return response
-}
-
-const saveReasoning = async (reasons, diaryid) => {
-    if (!reasons || !diaryid) return
-    let existingDiary;
-
-    try {
-        existingDiary = await Diary.findOne({ _id: diaryid });
-        if (!existingDiary) {
-            throw ("Not found dairy", diaryid)
-        }
-
-        existingDiary.reasons = reasons
-
-        await existingDiary.save();
-    } catch (err) {
-        err && console.error(err);
-    }
 }
 
 const getEmotionList = async (userid) => {

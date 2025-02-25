@@ -68,7 +68,7 @@ Dialog: ${JSON.stringify(dialog)}`
     return response
 }
 
-const checkReasonClear = async (diary, dialog, currentPhase) => {
+const checkReasonClear = async (diary, dialog, currentPhase, diaryid) => {
     const response = {
         error: "",
         next_phase: currentPhase
@@ -88,7 +88,7 @@ Response must be JSON format:
     "rationale": string
 }
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.
+Property "rationale": explain how you generate your response follow instruction, less than 50 words..
 
 User's diary: ${diary}
 Dialog: ${JSON.stringify(dialog)}`
@@ -96,9 +96,10 @@ Dialog: ${JSON.stringify(dialog)}`
     const _res = await generateAnalysis(instruction)
     console.log("checkReasonClear", _res)
     try {
-        const res = JSON.parse(_res) 
+        const res = JSON.parse(_res)
         if (res?.response?.toLowerCase() === "true") {
             response.next_phase = PHASE_LABEL.PHASE_6
+            saveReasoning(dialog, diaryid, diary)
         }
     } catch (error) {
         console.error(error)
@@ -140,12 +141,12 @@ Dialog: ${JSON.stringify(dialog)}`
     console.log("checkEmotionInferenceAccuracy", _res)
     try {
         const res = JSON.parse(_res)
-        if (res.response === PHASE_LABEL.PHASE_4 ) {
+        if (res.response === PHASE_LABEL.PHASE_4) {
             response.next_phase = PHASE_LABEL.PHASE_4
-            saveEmotion(userid, dialog, diaryid)
-        } else if (res.response === PHASE_LABEL.PHASE_5 ) {
+            saveEmotion(userid, dialog, diaryid, diary)
+        } else if (res.response === PHASE_LABEL.PHASE_5) {
             response.next_phase = PHASE_LABEL.PHASE_5
-            saveEmotion(userid, dialog, diaryid)
+            saveEmotion(userid, dialog, diaryid, diary)
         }
     } catch {
         console.error(_res)
@@ -182,33 +183,61 @@ const generateAnalysis = async (instruction) => {
     return response
 }
 
-const saveEmotion = async (userid, dialog, diaryid) => {
+const saveEmotion = async (userid, dialog, diaryid, diary) => {
     const emotionList = await getEmotionList(userid)
 
-    let task_instruction = `Look at the conversation and detect user'emotion. Only detect the emotion mentioned in the dialog. 
+    let task_instruction = `Look at the diary and dialog, detect user's emotion in the diary. Only detect the emotion mentioned in the dialog. 
 Don't use others words. 
 Don't list similar emotions.
 Don't list more than 2 emotions.
-Emotions maybe ${emotionList.toString()}
+Consider these emotions: ${emotionList.toString()}
 Return correct format as an array. 
-Correct format 1: ["기쁨"]
-Correct format 2: ["분노","슬픔"]
-Incorrect format: ["분노,슬픔"]
+Example 1: ["기쁨"]
+Example 2: ["분노","슬픔"]
 
-Dialog: ${JSON.stringify(dialog)}`
+Dialog: ${JSON.stringify(dialog)}
+
+Diary: ${diary}
+`
 
     const _res = await generateAnalysis(task_instruction)
-    // console.log(222, _res)
+
     try {
         const emotions = JSON.parse(_res)
         if (!Array.isArray(emotions)) {
             throw ("Emotions is not array")
         }
         const existingDiary = await Diary.findOne({ _id: diaryid });
-        existingDiary.emotions = emotions.toString();
+        existingDiary.emotions = emotions;
         await existingDiary.save();
-    } catch(error) {
+    } catch (error) {
         console.error("saveEmotion", error)
+    }
+}
+
+const saveReasoning = async (dialog, diaryid, diary) => {
+    let task_instruction = `Look at the diary and dialog, return cause of user's emotion in the diary. Return in Korean, no more than 50 words.
+    
+    Dialog: ${JSON.stringify(dialog)}
+    
+    Diary: ${diary}
+    `
+
+    const _res = await generateAnalysis(task_instruction)
+
+    let existingDiary;
+
+    try {
+        existingDiary = await Diary.findOne({ _id: diaryid });
+        if (!existingDiary) {
+            throw ("Not found dairy", diaryid)
+        }
+
+        existingDiary.reasons = _res
+
+        await existingDiary.save();
+    } catch (err) {
+        err && console.error(err);
     }
 }
 
@@ -217,7 +246,7 @@ const getEmotionList = async (userid) => {
     if (!userid) {
         return presetEmotions
     }
-    const emotions = await Statistic.distinct( "subcategory", { category: "emotion", userid: userid } )
+    const emotions = await Statistic.distinct("subcategory", { category: "emotion", userid: userid })
     const mergeList = presetEmotions.concat(emotions)
     return [...new Set(mergeList)];
 }
