@@ -65,10 +65,11 @@ Return in JSON format, structured as follows:
 {
     "response": string,
     "rationale": string,
+    "emotions": [string]
 }
 Property "response": your response to user. 
 Property "rationale": explain how you generate your response follow instruction.
-`
+Property "emotions": no more than 2 emotions.`
     } else {
         task_instruction = `You are a therapeutic helping user explore and understand their feelings more deeply. 
 Do the following tasks. Response should be shorter than 100 words in Korean.
@@ -168,7 +169,7 @@ Property "rationale": explain how you generate your response follow instruction.
     }
 
     const _res = await generateResponse(dialog, task_instruction)
-    console.log("reflectNegativeEmotion", _res)
+    // console.log("reflectNegativeEmotion", _res)
 
     try {
         const res = JSON.parse(_res)
@@ -250,7 +251,6 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
     try {
         const context = await categorizeContext(diary, dialog)
 
-        // console.log("retrieveRelevantDiaryByContext", context)
         if (!context?.activity) {
             return results
         }
@@ -293,7 +293,7 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
                 reasons: e.reasons
             }))
         }
-        console.log("topThree context", topThree)
+        // console.log("topThree context", topThree)
     } catch (err) {
         err && console.error(err);
         return results

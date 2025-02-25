@@ -64,7 +64,7 @@ Dialog: ${JSON.stringify(dialog)}`
         console.error(_res)
     }
 
-    console.log("checkMissingContext", response)
+    // console.log("checkMissingContext", response)
     return response
 }
 
@@ -94,7 +94,7 @@ User's diary: ${diary}
 Dialog: ${JSON.stringify(dialog)}`
 
     const _res = await generateAnalysis(instruction)
-    console.log("checkReasonClear", _res)
+    // console.log("checkReasonClear", _res)
     try {
         const res = JSON.parse(_res)
         if (res?.response?.toLowerCase() === "true") {
@@ -138,7 +138,7 @@ User's diary: ${diary}
 Dialog: ${JSON.stringify(dialog)}`
 
     const _res = await generateAnalysis(instruction)
-    console.log("checkEmotionInferenceAccuracy", _res)
+    // console.log("checkEmotionInferenceAccuracy", _res)
     try {
         const res = JSON.parse(_res)
         if (res.response === PHASE_LABEL.PHASE_4) {

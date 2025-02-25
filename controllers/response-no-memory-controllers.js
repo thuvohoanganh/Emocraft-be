@@ -13,7 +13,7 @@ const openai = new OpenAI({
 const recognizeEmotionNoMem = async (diary, userid, dialog) => {
     const emotionList = await getEmotionList(userid)
     let task_instruction = `You are a therapeutic helping user explore and understand their feelings more deeply. 
-Do the following tasks. Response in Korean.
+Do the following tasks. Response should be shorter than 100 words in Korean.
 1. Recognizes the feelings expressed by the user. Consider these emotions: ${emotionList}
 2. Reflects these emotions back to the user, acting as an emotional mirror.
 3. Validate the client's feelings, making them feel understood and listened to.
@@ -27,7 +27,8 @@ Return in JSON format, structured as follows:
     "emotions": [string]
 }
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.`
+Property "rationale": explain how you generate your response follow instruction.
+Property "emotions": no more than 2 emotions.`
 
     const response = {
         error: "",
@@ -46,9 +47,9 @@ Property "rationale": explain how you generate your response follow instruction.
         }
         response.content = res.response
         response.analysis = res.emotions
-        console.log("recognizeEmotionNoMem", res)
+        // console.log("recognizeEmotionNoMem", res)
     } catch {
-        console.error(_res)
+        console.error("recognizeEmotionNoMem", _res)
         response.content = _res
     }
 
@@ -83,7 +84,7 @@ Property "response": your response to user.
 Property "rationale": explain how you generate your response follow instruction.`
 
     const _res = await generateResponse(dialog, task_instruction)
-    console.log("reflectNegativeEmotionNoMem", _res)
+    // console.log("reflectNegativeEmotionNoMem", _res)
 
     try {
         const res = JSON.parse(_res)
@@ -92,7 +93,7 @@ Property "rationale": explain how you generate your response follow instruction.
         }
         response.content = res.response
     } catch {
-        console.error(_res)
+        console.error("reflectNegativeEmotionNoMem", _res)
         response.content = _res
     }
 
@@ -121,7 +122,7 @@ Property "response": your response to user.
 Property "rationale": explain how you generate your response follow instruction.`
 
     const _res = await generateResponse(dialog, task_instruction)
-    console.log("reflectPositiveEmotionNoMem", _res)
+    // console.log("reflectPositiveEmotionNoMem", _res)
 
     try {
         const res = JSON.parse(_res)
@@ -130,7 +131,7 @@ Property "rationale": explain how you generate your response follow instruction.
         }
         response.content = res.response
     } catch {
-        console.error(_res)
+        console.error("reflectPositiveEmotionNoMem", _res)
         response.content = _res
     }
 

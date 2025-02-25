@@ -38,7 +38,7 @@ const chatbotConversation = async (req, res, next) => {
         );
     }
 
-    const {userid, diaryid, diary, dialog, phase: currentPhase, emotions } = req.body
+    const { userid, diaryid, diary, dialog, phase: currentPhase, emotions } = req.body
     let response = {
         phase: "",
         content: "",
@@ -54,22 +54,22 @@ const chatbotConversation = async (req, res, next) => {
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
-    } 
+    }
     else if (currentPhase === PHASE_LABEL.PHASE_2 || currentPhase === PHASE_LABEL.PHASE_3) {
         const result = await checkEmotionInferenceAccuracy(diary, dialog, diaryid, userid)
         nextPhase = result.next_phase
         error = result.error
-    } 
+    }
     else if (currentPhase === PHASE_LABEL.PHASE_4) {
         const result = await checkReasonClear(diary, dialog, currentPhase, diaryid)
         nextPhase = result.next_phase
         error = result.error
-    } 
+    }
     else if (currentPhase === PHASE_LABEL.PHASE_5) {
         const result = await checkReasonClear(diary, dialog, currentPhase, diaryid)
         nextPhase = result.next_phase
         error = result.error
-    } 
+    }
 
     if (!!error) {
         console.error(error)
@@ -81,7 +81,7 @@ const chatbotConversation = async (req, res, next) => {
     }
     /* END: Check criteria in current phase, define the next phase */
 
-    console.log("nextPhase", nextPhase)
+    // console.log("nextPhase", nextPhase)
 
     /* START: Generate response */
     if (nextPhase === PHASE_LABEL.PHASE_1) {
@@ -89,19 +89,19 @@ const chatbotConversation = async (req, res, next) => {
         error = result.error
         response.phase = result.phase
         response.content = result.content
-    } 
+    }
     else if (nextPhase === PHASE_LABEL.PHASE_2) {
         const result = await recognizeEmotion(diary, userid, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content
-    }  
+    }
     else if (nextPhase === PHASE_LABEL.PHASE_4) {
         const result = await reflectNegativeEmotion(userid, diaryid, diary, dialog, emotions)
         error = result.error
         response.phase = result.phase
         response.content = result.content
-    } 
+    }
     else if (nextPhase === PHASE_LABEL.PHASE_5) {
         const result = await reflectPositiveEmotion(userid, diaryid, diary, dialog, emotions)
         error = result.error
@@ -127,32 +127,15 @@ const chatbotConversation = async (req, res, next) => {
     }
 
     if (response.content?.[0] === "") {
-        response.content = response.content.replace(/^\"+|\"+$/gm,'')
+        response.content = response.content.replace(/^\"+|\"+$/gm, '')
     }
 
-    console.log("response", response)
     console.log('------------------------------')
     res.status(200).json({
         data: response
     });
     return
 }
-
-const checkUserExists = async (userId) => {
-    let existingUser;
-    try {
-        existingUser = await User.findOne({ _id: userId }, '-password');
-        if (!existingUser) {
-            throw new HttpError('User does not exist', 404);
-        }
-    } catch (err) {
-        if (err instanceof HttpError) {
-            throw err;
-        }
-        throw new HttpError('Fetching user failed, please try again later.', 500);
-    }
-    return existingUser;
-};
 
 const generateWeeklySummary = async (uid, startDate, endDate) => {
     // print params, recheck if the params are correct
@@ -193,7 +176,8 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
                         totalEmotions[emotion] = 1;
                     }
                     totalIntensity += 1
-            }});
+                }
+            });
         }
     });
 
@@ -208,8 +192,8 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
             }
         }
     }
-    
-    emotionPercentages.sort((a,b) => b.percentage - a.percentage)
+
+    emotionPercentages.sort((a, b) => b.percentage - a.percentage)
 
     const contentToSummarize = diaries.map(diary => {
         const date = new Date(diary.timestamp).toLocaleString();
@@ -217,7 +201,7 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
     }).join("\n\n");
 
     let summary;
-    const user = await User.findById(uid);   
+    const user = await User.findById(uid);
     if (!user) {
         throw new Error('User not found');
     }
@@ -272,18 +256,18 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
 }
 
 
-const getWeeklyEntries = async ( uid, startDate, endDate ) => {
+const getWeeklyEntries = async (uid, startDate, endDate) => {
     let diaries;
     try {
         diaries = await Diary.find({
             userid: uid,
             timestamp: { $gte: startDate, $lte: endDate }
         })
-        .sort({ timestamp: -1 });    
+            .sort({ timestamp: -1 });
     } catch (err) {
         console.error('Error fetching diaries:', err);
         throw new HttpError('Fetching diaries failed, please try again later.', 500);
-    }    
+    }
 
     if (!diaries || diaries.length < 3) {
         return null;
@@ -309,7 +293,7 @@ const checkAndFulfillSummary = async (req, res, next) => {
 
     let from = new Date(oldestDiary.timestamp);
     let to = new Date(newestDiary.timestamp);
-    to.setDate(to.getDate() - 1);
+
     const weekMarker = [];
 
     while (from <= to) {
@@ -325,7 +309,7 @@ const checkAndFulfillSummary = async (req, res, next) => {
         start.setDate(start.getDate() - 1);
         end.setDate(start.getDate() + 1);
 
-        
+
 
         let existingSummary = null;
         try {
@@ -333,31 +317,31 @@ const checkAndFulfillSummary = async (req, res, next) => {
                 userid: uid,
                 startdate: { $gt: start, $lt: end },
             })
+
+            const startDate = new Date(weekMarker[index]);
+            const endDate = new Date(weekMarker[index]);
+            endDate.setDate(endDate.getDate() + 6);
+
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+
+            if (!existingSummary) {
+                // console.log(chalk.bgRed(`Summary for week ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()} is missing`));
+
+                // Call generateWeeklySummary to generate the summary
+                try {
+                    const result = await generateWeeklySummary(uid, startDate.toISOString(), endDate.toISOString());
+                    // console.log(chalk.green('Generated summary:'), result);
+                } catch (error) {
+                    console.error(error);
+                    // console.log(chalk.red('Error generating summary for week', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString()));
+                }
+            } else {
+                // console.log(`${chalk.bgYellow(`Summary for week ${startDate.toISOString()} - ${endDate.toISOString()} exists:`)} ${existingSummary._id}`);
+            }
         } catch (err) {
             console.error(err);
             return res.status(200).json([]);
-        }
-
-        const startDate = new Date(weekMarker[index]);
-        const endDate = new Date(weekMarker[index]);
-        endDate.setDate(endDate.getDate() + 6);
-
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-
-        if (!existingSummary) {
-            console.log(chalk.bgRed(`Summary for week ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()} is missing`));
-            
-            // Call generateWeeklySummary to generate the summary
-            try {
-                const result = await generateWeeklySummary(uid, startDate.toISOString(), endDate.toISOString());
-                console.log(chalk.green('Generated summary:'), result);
-            } catch (error) {
-                console.error(error);
-                console.log(chalk.red('Error generating summary for week', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString()));
-            }
-        } else {
-            console.log(`${chalk.bgYellow(`Summary for week ${startDate.toISOString()} - ${endDate.toISOString()} exists:`)} ${existingSummary._id}`);
         }
     }
 
@@ -378,16 +362,18 @@ const getWeeklySummaries = async (req, res, next) => {
     let summaries = [];
     try {
         summaries = await Summary.find({ userid: uid }).sort({ startdate: -1 });
-        summaries = summaries.map(e => ({
-            _id: e._id,
-            userid: e.userid,
-            content: e.content,
-            startdate: e.startdate,
-            enddate: e.enddate,
-            dailyEmotions: JSON.parse(e.dailyEmotions),
-            weeklyEmotions: e.weeklyEmotions,
-            emotionPercentages: JSON.parse(e.emotionPercentages)
-        }))
+        if (summaries.length > 0) {
+            summaries = summaries.map(e => ({
+                _id: e._id,
+                userid: e.userid,
+                content: e.content,
+                startdate: e.startdate,
+                enddate: e.enddate,
+                dailyEmotions: JSON.parse(e.dailyEmotions),
+                weeklyEmotions: e.weeklyEmotions,
+                emotionPercentages: JSON.parse(e.emotionPercentages)
+            }))
+        }
     } catch (err) {
         console.error(err);
         return next(new HttpError('Fetching summaries failed, please try again later.', 500));
@@ -432,7 +418,7 @@ const chatbotConversationNoMem = async (req, res, next) => {
         );
     }
 
-    const {userid, diaryid, diary, dialog, phase: currentPhase, emotions } = req.body
+    const { userid, diaryid, diary, dialog, phase: currentPhase, emotions } = req.body
     let response = {
         phase: "",
         content: "",
@@ -448,22 +434,22 @@ const chatbotConversationNoMem = async (req, res, next) => {
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
-    } 
+    }
     else if (currentPhase === PHASE_LABEL.PHASE_2 || currentPhase === PHASE_LABEL.PHASE_3) {
         const result = await checkEmotionInferenceAccuracy(diary, dialog, diaryid, userid)
         nextPhase = result.next_phase
         error = result.error
-    } 
+    }
     else if (currentPhase === PHASE_LABEL.PHASE_4) {
         const result = await checkReasonClear(diary, dialog, currentPhase, diaryid)
         nextPhase = result.next_phase
         error = result.error
-    } 
+    }
     else if (currentPhase === PHASE_LABEL.PHASE_5) {
         const result = await checkReasonClear(diary, dialog, currentPhase, diaryid)
         nextPhase = result.next_phase
         error = result.error
-    } 
+    }
 
     if (!!error) {
         console.error(error)
@@ -483,19 +469,19 @@ const chatbotConversationNoMem = async (req, res, next) => {
         error = result.error
         response.phase = result.phase
         response.content = result.content
-    } 
+    }
     else if (nextPhase === PHASE_LABEL.PHASE_2) {
         const result = await recognizeEmotionNoMem(diary, userid, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content
-    }  
+    }
     else if (nextPhase === PHASE_LABEL.PHASE_4) {
         const result = await reflectNegativeEmotionNoMem(userid, diaryid, diary, dialog, emotions)
         error = result.error
         response.phase = result.phase
         response.content = result.content
-    } 
+    }
     else if (nextPhase === PHASE_LABEL.PHASE_5) {
         const result = await reflectPositiveEmotionNoMem(userid, diaryid, diary, dialog, emotions)
         error = result.error
@@ -521,7 +507,7 @@ const chatbotConversationNoMem = async (req, res, next) => {
     }
 
     if (response.content?.[0] === "") {
-        response.content = response.content.replace(/^\"+|\"+$/gm,'')
+        response.content = response.content.replace(/^\"+|\"+$/gm, '')
     }
 
     console.log("response", response)
