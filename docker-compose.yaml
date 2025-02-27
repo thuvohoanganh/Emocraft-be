@@ -1,30 +1,26 @@
 services:
-  mongodbContainer:
-    image: mongodb/mongodb-atlas-local
-    environment:
-      - MONGODB_INITDB_ROOT_USERNAME=user
-      - MONGODB_INITDB_ROOT_PASSWORD=pass
-    ports:
-      - 27018:27017
-    networks:
-      - mongodb-nodejs-network
+  mongodb:
+    image: mongodb/mongodb-community-server:6.0-ubi8
+    env_file: ./.db.env
     volumes:
-      - data:/data/db
+      - mongodb:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+        test: ["CMD", "mongosh", "--eval", "db.runCommand({ ping: 1 })"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
   
   backend:
     image: thuvo/emocraft
     ports:
       - "8000:8000"
-    networks: # adding network
-      - mongodb-nodejs-network
     depends_on:
-      - mongodbContainer
-    env_file: ./Emocraft-be/.prod.env
+      mongodb:
+        condition: service_healthy
+    env_file: ./.prod.env
 
-networks: # allow services to talk to each other while providing isolation from other docker container, running on the same host
-  mongodb-nodejs-network:
-    driver: bridge
-
-volumes: # enable persistence of database data across container restart
-  data:
+volumes:
+  mongodb:
     driver: local
