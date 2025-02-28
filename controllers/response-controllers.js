@@ -44,8 +44,8 @@ const askMissingInfor = async (diary, dialog, summary) => {
     return response
 }
 
-const recognizeEmotion = async (diary, userid, dialog) => {
-    const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, "", diary, dialog)
+const recognizeEmotion = async (diary, userid, dialog, diaryid) => {
+    const retrievedDiaries = await retrieveSimilarDiary(userid, diaryid)
     const emotionList = await getEmotionList(userid)
     let task_instruction = ""
 
@@ -107,7 +107,9 @@ Property "emotions": no more than 2 emotions.`
         }
         response.content = res.response
         response.analysis = res.emotions
-        console.log("recognizeEmotion", res)
+        console.log(res.response)
+        console.log(res.emotions)
+
     } catch {
         console.error(_res)
         response.content = _res
@@ -125,7 +127,7 @@ const reflectNegativeEmotion = async (userid, diaryid, diary, dialog, emotions) 
         content: "",
     }
     let task_instruction = ""
-    const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
+    const retrievedDiaries = await retrieveSimilarDiary(userid, diaryid)
 
     if (retrievedDiaries.length) {
         task_instruction += `Your task is helping user reflect the reason of their emotions.
@@ -194,7 +196,7 @@ const reflectPositiveEmotion = async (userid, diaryid, diary, dialog, emotions) 
         content: "",
     }
     let task_instruction = ""
-    const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
+    const retrievedDiaries = await retrieveSimilarDiary(userid, diaryid)
 
     if (retrievedDiaries.length) {
         task_instruction = `If user have similar emotion in the past, recall it and encourage user.
@@ -455,22 +457,24 @@ const createEmbedding = async (text) => {
     }
 }
 
-const retrieveSimilarDiary = async (userid, diary) => {
+const retrieveSimilarDiary = async (userid, diaryid) => {
     let results = []
-    const queryVector = await createEmbedding(diary)
+
 
     try {
+        const diary = await Diary.findOne({ _id: diaryid })
+        if (!diary) {
+            return results
+        }
         let contextRelevantDiary = await Diary.aggregate([
             {
                 "$vectorSearch": {
                     "index": "vector_index",
-                    "limit": 3,
-                    "numCandidates": 3,
+                    "limit": 4,
+                    "numCandidates": 4,
                     "path": "embeddings",
-                    "queryVector": queryVector,
-                    // "filter": {
-                    //     "userid": userid
-                    // }
+                    "queryVector": diary.embeddings,
+                    "filter": { "userid": userid }
                 }
             },
             {
@@ -483,6 +487,7 @@ const retrieveSimilarDiary = async (userid, diary) => {
             }
         ]);
 
+        contextRelevantDiary = contextRelevantDiary.filter(e => e._id.toString() !== diaryid)
         if (contextRelevantDiary.length > 0) {
             results = contextRelevantDiary.map(e => ({
                 content: e.content,
@@ -490,18 +495,14 @@ const retrieveSimilarDiary = async (userid, diary) => {
                 reasons: e.reasons
             }))
         }
-        console.log("topThree context", contextRelevantDiary)
+        console.log("topThree context", contextRelevantDiary.map(e => e.content).toString())
+        console.log("--------------")
     } catch (err) {
         err && console.error(err);
         return results
     }
     return results
 }
-
-// retrieveSimilarDiary(
-//     "67bc83cb82206a86a9ea3ee8",
-//     "오늘 아침, 햇살이 너무 따스해서 기분이 좋았다. 창가에 앉아 커피를 마시며 하루를 시작하니, 마치 휴가를 온 듯한 느낌이었다."
-// )
 
 module.exports = {
     askMissingInfor,
