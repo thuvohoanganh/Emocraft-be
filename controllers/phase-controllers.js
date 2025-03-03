@@ -221,6 +221,8 @@ Diary: ${existingDiary.content}
         }
 
         existingDiary.emotions = emotions;
+        existingDiary.dialog = JSON.stringify(dialog)
+
         await existingDiary.save();
     } catch (error) {
         console.error("saveEmotion", error)
@@ -246,6 +248,7 @@ const saveReasoning = async (dialog, diaryid, diary) => {
         }
 
         existingDiary.reasons = _res
+        existingDiary.dialog = JSON.stringify(dialog)
 
         await existingDiary.save();
     } catch (err) {
