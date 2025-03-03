@@ -65,7 +65,6 @@ const EMOTION_DIMENSION = {
 const PHASE_LABEL = {
     PHASE_1: "beginning",
     PHASE_2: "emotion_classify",
-    PHASE_3: "revise_emotion_classify",
     PHASE_4: "reflect_negative_emotion",
     PHASE_5: "reflect_positive_emotion",
     PHASE_6: "goodbye",

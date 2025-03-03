@@ -1,6 +1,6 @@
 const OpenAI = require("openai")
 const dotenv = require("dotenv")
-const { PHASE_LABEL, GPT, EMOTION_LABEL } = require('../constant')
+const { PHASE_LABEL, GPT, EMOTION_LABEL, PREDEFINED_ACTIVITY, PREDEFINED_LOCATION, PREDEFINED_PEOPLE, TIMES_OF_DAY } = require('../constant')
 const Diary = require('../models/diary');
 const Statistic = require('../models/statistic');
 
@@ -9,7 +9,7 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-const checkMissingContext = async (diary, dialog) => {
+const checkMissingContext = async (diary, dialog, diaryid) => {
     const response = {
         error: "",
         summary: {
@@ -45,10 +45,20 @@ Dialog: ${JSON.stringify(dialog)}`
     const _res = await generateAnalysis(instruction)
     try {
         const res = JSON.parse(_res)
-        if (res.event && res.location && res.people && res.time_of_day) {
+        if ((res.event && res.location && res.people && res.time_of_day) || dialog.length > 6) {
             response.next_phase = PHASE_LABEL.PHASE_2
-        } else if (dialog.length > 6) {
-            response.next_phase = PHASE_LABEL.PHASE_2
+
+            const existingDiary = await Diary.findOne({ _id: diaryid });
+            const context = await categorizeContext(existingDiary.content, dialog, existingDiary.userid)
+
+            if (context?.activity) {
+                existingDiary.activity = context.activity
+                existingDiary.people = context.people
+                existingDiary.time_of_day = context.time_of_day
+                existingDiary.location = context.location
+
+                await existingDiary.save();
+            }
         }
 
         response.summary = res
@@ -110,7 +120,7 @@ Dialog: ${JSON.stringify(dialog)}`
     return response
 }
 
-const checkEmotionInferenceAccuracy = async (diary, dialog, diaryid, userid) => {
+const checkEmotionExpressed = async (diary, dialog, diaryid) => {
     const response = {
         error: "",
         next_phase: PHASE_LABEL.PHASE_2
@@ -138,15 +148,15 @@ User's diary: ${diary}
 Dialog: ${JSON.stringify(dialog)}`
 
     const _res = await generateAnalysis(instruction)
-    // console.log("checkEmotionInferenceAccuracy", _res)
+
     try {
         const res = JSON.parse(_res)
         if (res.response === PHASE_LABEL.PHASE_4) {
             response.next_phase = PHASE_LABEL.PHASE_4
-            saveEmotion(userid, dialog, diaryid, diary)
+            saveEmotion(diaryid, dialog)
         } else if (res.response === PHASE_LABEL.PHASE_5) {
             response.next_phase = PHASE_LABEL.PHASE_5
-            saveEmotion(userid, dialog, diaryid, diary)
+            saveEmotion(diaryid, dialog)
         }
     } catch {
         console.error(_res)
@@ -183,10 +193,14 @@ const generateAnalysis = async (instruction) => {
     return response
 }
 
-const saveEmotion = async (userid, dialog, diaryid, diary) => {
-    const emotionList = await getEmotionList(userid)
+const saveEmotion = async (diaryid, dialog) => {
+    try {
+        const existingDiary = await Diary.findOne({ _id: diaryid });
 
-    let task_instruction = `Look at the diary and dialog, detect user's emotion in the diary. Only detect the emotion mentioned in the dialog. 
+        if (!existingDiary) return
+        const emotionList = await getEmotionList(existingDiary.userid)
+
+        let task_instruction = `Look at the diary and dialog, detect user's emotion in the diary. Only detect the emotion mentioned in the dialog. 
 Don't use others words. 
 Don't list similar emotions.
 Don't list more than 2 emotions.
@@ -197,17 +211,15 @@ Example 2: ["분노","슬픔"]
 
 Dialog: ${JSON.stringify(dialog)}
 
-Diary: ${diary}
+Diary: ${existingDiary.content}
 `
 
-    const _res = await generateAnalysis(task_instruction)
-
-    try {
+        const _res = await generateAnalysis(task_instruction)
         const emotions = JSON.parse(_res)
         if (!Array.isArray(emotions)) {
             throw ("Emotions is not array")
         }
-        const existingDiary = await Diary.findOne({ _id: diaryid });
+
         existingDiary.emotions = emotions;
         await existingDiary.save();
     } catch (error) {
@@ -241,6 +253,68 @@ const saveReasoning = async (dialog, diaryid, diary) => {
     }
 }
 
+const categorizeContext = async (diary, dialog, userid) => {
+    const response = {
+        activity: "",
+        location: "",
+        people: "",
+        time_of_day: "",
+    }
+
+    const existingCategories = {}
+    try {
+        const location = await Statistic.distinct("subcategory", { category: "location", userid })
+        const people = await Statistic.distinct("subcategory", { category: "people", userid })
+        const activity = await Statistic.distinct("subcategory", { category: "activity", userid })
+
+        existingCategories["location"] = location
+        existingCategories["people"] = people
+        existingCategories["activity"] = activity
+    } catch (err) {
+        console.error(err)
+    }
+
+    const { activity, location, people } = existingCategories
+
+    let activitySet = activity.concat(Object.values(PREDEFINED_ACTIVITY))
+    activitySet = [...new Set(activitySet)]
+    let locationSet = location.concat(Object.values(PREDEFINED_LOCATION))
+    locationSet = [...new Set(locationSet)]
+    let peopleSet = people.concat(Object.values(PREDEFINED_PEOPLE))
+    peopleSet = [...new Set(peopleSet)]
+
+    const instruction = `Based on diary and dialog, classify contextual information into category.
+Use JSON format with the following properties:
+- activity: detect key activity in the diary and return the category that it belong to. Consider these category: ${JSON.stringify(activitySet)}. If it doesn't belong to any of those, generate suitable category label. Return only one main activity. Don't return "other".
+- location: detect where did user usually have that emotions and return the category that it belong to. Consider these category: ${JSON.stringify(locationSet)}. If it doesn't belong to any of those, generate suitable category label. Return only one location label relate to activity. Don't return "other".
+- people: detect who did cause those emotions and return the category that it belong to. Consider these category: ${JSON.stringify(peopleSet)}. If it doesn't belong to any of those, generate suitable category label. Return only one people label relate to activity. Don't return "other".
+- time_of_day: what time of day did event happen. Only use one of the following: ${JSON.stringify(TIMES_OF_DAY)}. Return only one word.
+- rationale: Describe your rationale on how properties were derived.
+    {
+        "activity": string | null,
+        "location": string | null,
+        "people": string | null,
+        "time_of_day": string | null,
+        "rationale": string,
+    }
+
+User's diary: ${diary}
+Dialog: ${JSON.stringify(dialog)}    `
+
+    const _res = await generateAnalysis(instruction)
+    try {
+        const res = JSON.parse(_res)
+        response.activity = res.activity
+        response.location = res.location
+        response.people = res.people
+        response.time_of_day = res.time_of_day
+    } catch (error) {
+        console.error("categorizeContext", error)
+    }
+
+    return response
+}
+
 const getEmotionList = async (userid) => {
     const presetEmotions = Object.values(EMOTION_LABEL)
     if (!userid) {
@@ -254,7 +328,7 @@ const getEmotionList = async (userid) => {
 module.exports = {
     checkMissingContext,
     checkReasonClear,
-    checkEmotionInferenceAccuracy,
-    generateAnalysis
+    checkEmotionExpressed,
+    generateAnalysis,
 }
 

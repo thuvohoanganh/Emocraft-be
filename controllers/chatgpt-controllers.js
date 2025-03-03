@@ -5,7 +5,7 @@ const User = require('../models/user');
 const Summary = require('../models/summary');
 const {
     checkMissingContext,
-    checkEmotionInferenceAccuracy,
+    checkEmotionExpressed,
     checkReasonClear
 } = require('./phase-controllers');
 const {
@@ -50,13 +50,13 @@ const chatbotConversation = async (req, res, next) => {
 
     /* START: Check criteria in current phase, define the next phase */
     if (currentPhase === PHASE_LABEL.PHASE_1) {
-        const result = await checkMissingContext(diary, dialog)
+        const result = await checkMissingContext(diary, dialog, diaryid)
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
     }
     else if (currentPhase === PHASE_LABEL.PHASE_2 || currentPhase === PHASE_LABEL.PHASE_3) {
-        const result = await checkEmotionInferenceAccuracy(diary, dialog, diaryid, userid)
+        const result = await checkEmotionExpressed(diary, dialog, diaryid)
         nextPhase = result.next_phase
         error = result.error
     }
@@ -91,7 +91,7 @@ const chatbotConversation = async (req, res, next) => {
         response.content = result.content
     }
     else if (nextPhase === PHASE_LABEL.PHASE_2) {
-        const result = await recognizeEmotion(diary, userid, dialog)
+        const result = await recognizeEmotion(diaryid, diary, userid, dialog)
         error = result.error
         response.phase = result.phase
         response.content = result.content
@@ -130,7 +130,6 @@ const chatbotConversation = async (req, res, next) => {
         response.content = response.content.replace(/^\"+|\"+$/gm, '')
     }
 
-    console.log('------------------------------')
     res.status(200).json({
         data: response
     });
@@ -430,13 +429,13 @@ const chatbotConversationNoMem = async (req, res, next) => {
 
     /* START: Check criteria in current phase, define the next phase */
     if (currentPhase === PHASE_LABEL.PHASE_1) {
-        const result = await checkMissingContext(diary, dialog)
+        const result = await checkMissingContext(diary, dialog, diaryid)
         nextPhase = result.next_phase
         error = result.error
         summary = result.summary
     }
     else if (currentPhase === PHASE_LABEL.PHASE_2 || currentPhase === PHASE_LABEL.PHASE_3) {
-        const result = await checkEmotionInferenceAccuracy(diary, dialog, diaryid, userid)
+        const result = await checkEmotionExpressed(diary, dialog, diaryid)
         nextPhase = result.next_phase
         error = result.error
     }
@@ -510,8 +509,8 @@ const chatbotConversationNoMem = async (req, res, next) => {
         response.content = response.content.replace(/^\"+|\"+$/gm, '')
     }
 
-    console.log("response", response)
-    console.log('------------------------------')
+    // console.log("chatbotConversationNoMem", response)
+    // console.log('------------------------------')
     res.status(200).json({
         data: response
     });

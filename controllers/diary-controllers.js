@@ -3,7 +3,6 @@ const Statistic = require('../models/statistic');
 const User = require('../models/user');
 const HttpError = require('../models/http-error');
 const { validationResult } = require('express-validator');
-const { categorizeContext } = require('./response-controllers');
 const { minmaxScaling } = require('../utils');
 
 const createDiary = async (req, res, next) => {
@@ -136,7 +135,7 @@ const getDiaries = async (req, res, next) => {
 
 const updateDiary = async (req, res, next) => {
     const { uid, pid } = req.params;
-    const { content, emotions, dialog, context, timestamp } = req.body;
+    const { content, emotions, dialog, timestamp } = req.body;
 
     let existingDiary;
 
@@ -237,66 +236,64 @@ const encode = async (req, res, next) => {
     }
 
     try {
-        const context = await categorizeContext(existingDiary.content, dialog, userid)
-
-        if (context.location) {
-            existingDiary.location = context.location 
-            const contextFactor = await Statistic.findOne({ category: "location", subcategory: context.location, userid });
+        if (existingDiary.location) {
+            existingDiary.location = existingDiary.location 
+            const contextFactor = await Statistic.findOne({ category: "location", subcategory: existingDiary.location, userid });
             if (contextFactor) {
                 contextFactor.quantity += 1;
                 contextFactor.save();
             } else {
                 const newSubcategory = new Statistic({
                     category: "location",
-                    subcategory: context.location,
+                    subcategory: existingDiary.location,
                     userid: userid,
                     quantity: 1,
                 });
                 newSubcategory.save();
             }
         }
-        if (context.people) { 
-            existingDiary.people = context.people 
-            const contextFactor = await Statistic.findOne({ category: "people", subcategory: context.people, userid });
+        if (existingDiary.people) { 
+            existingDiary.people = existingDiary.people 
+            const contextFactor = await Statistic.findOne({ category: "people", subcategory: existingDiary.people, userid });
             if (contextFactor) {
                 contextFactor.quantity += 1;
                 contextFactor.save();
             } else {
                 const newSubcategory = new Statistic({
                     category: "people",
-                    subcategory: context.people,
+                    subcategory: existingDiary.people,
                     userid: userid,
                     quantity: 1,
                 });
                 newSubcategory.save();
             }
         }
-        if (context.activity) { 
-            existingDiary.activity = context.activity 
-            const contextFactor = await Statistic.findOne({ category: "activity", subcategory: context.activity, userid: userid });
+        if (existingDiary.activity) { 
+            existingDiary.activity = existingDiary.activity 
+            const contextFactor = await Statistic.findOne({ category: "activity", subcategory: existingDiary.activity, userid: userid });
             if (contextFactor) {
                 contextFactor.quantity += 1;
                 contextFactor.save();
             } else {
                 const newSubcategory = new Statistic({
                     category: "activity",
-                    subcategory: context.activity,
+                    subcategory: existingDiary.activity,
                     userid: userid,
                     quantity: 1,
                 });
                 newSubcategory.save();
             }
         }
-        if (context.time_of_day) { 
-            existingDiary.time_of_day = context.time_of_day 
-            const contextFactor = await Statistic.findOne({ category: "time_of_day", subcategory: context.time_of_day, userid });
+        if (existingDiary.time_of_day) { 
+            existingDiary.time_of_day = existingDiary.time_of_day 
+            const contextFactor = await Statistic.findOne({ category: "time_of_day", subcategory: existingDiary.time_of_day, userid });
             if (contextFactor) {
                 contextFactor.quantity += 1;
                 contextFactor.save();
             } else {
                 const newSubcategory = new Statistic({
                     category: "time_of_day",
-                    subcategory: context.time_of_day,
+                    subcategory: existingDiary.time_of_day,
                     userid: userid,
                     quantity: 1,
                 });
@@ -336,7 +333,6 @@ const encode = async (req, res, next) => {
 } 
 
 const consolidate = async (req, res, next) => {
-    // console.log("consolidate-----------------")
     const {userid} = req.body
     try {
         await checkUserExists(userid);
@@ -409,7 +405,6 @@ const consolidate = async (req, res, next) => {
             frequencyArray.push(diary.frequency)
             contextSaliencyArray.push(context_saliency)
             emotionSaliencyArray.push(emotionSaliency)
-            // console.log(diary.location,locationSaliency, diary.people,peopleSaliency, diary.activity, activitySaliency, diary.time_of_day , timeOfDaySaliency, context_saliency, diary.emotions, emotionSaliency)
         })
 
         let timeArrayMinmax = minmaxScaling(timeArray);
@@ -425,7 +420,6 @@ const consolidate = async (req, res, next) => {
             const contextRetention = f+contextSaliency > 0? Math.exp(-t/(f+contextSaliency)) : 0;
             const emotionRetention = f+emotionSaliency >0 ? Math.exp(-t/(f+emotionSaliency)) : 0;
 
-            // console.log("contextRetention", contextRetention, t, f, contextSaliency)
             diary.context_retention = contextRetention
             diary.emotion_retention = emotionRetention
 

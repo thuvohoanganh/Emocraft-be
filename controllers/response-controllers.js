@@ -4,7 +4,6 @@ const { TIMES_OF_DAY, PREDEFINED_PEOPLE, PREDEFINED_LOCATION, PREDEFINED_ACTIVIT
 const { PHASE_LABEL, GPT } = require('../constant')
 const Diary = require('../models/diary');
 const Statistic = require('../models/statistic');
-const { generateAnalysis } = require("./phase-controllers");
 
 dotenv.config()
 const openai = new OpenAI({
@@ -44,8 +43,8 @@ const askMissingInfor = async (diary, dialog, summary) => {
     return response
 }
 
-const recognizeEmotion = async (diary, userid, dialog) => {
-    const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, "", diary, dialog)
+const recognizeEmotion = async (diaryid, diary, userid, dialog) => {
+    const retrievedDiaries = await retrieveRelevantDiaryByContext(diaryid, userid)
     const emotionList = await getEmotionList(userid)
     let task_instruction = ""
     
@@ -118,14 +117,14 @@ Property "emotions": no more than 2 emotions.`
     return response
 }
 
-const reflectNegativeEmotion = async (userid, diaryid, diary, dialog, emotions) => {
+const reflectNegativeEmotion = async (userid, diaryid, diary, dialog) => {
     const response = {
         error: "",
         phase: PHASE_LABEL.PHASE_4,
         content: "",
     }
     let task_instruction = ""
-    const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
+    const retrievedDiaries = await retrieveRelevantDiaryByContext(diaryid, userid)
     
     if (retrievedDiaries.length) {
         task_instruction += `Your task is helping user reflect the reason of their emotions.
@@ -187,14 +186,14 @@ Property "rationale": explain how you generate your response follow instruction.
     return response
 }
 
-const reflectPositiveEmotion = async (userid, diaryid, diary, dialog, emotions) => {
+const reflectPositiveEmotion = async (userid, diaryid, diary, dialog) => {
     const response = {
         error: "",
         phase: PHASE_LABEL.PHASE_5,
         content: "",
     }
     let task_instruction = ""
-    const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
+    const retrievedDiaries = await retrieveRelevantDiaryByContext(diaryid, userid)
     
     if (retrievedDiaries.length) {
         task_instruction = `If user have similar emotion in the past, recall it and encourage user.
@@ -227,7 +226,7 @@ Property "rationale": explain how you generate your response follow instruction.
     }
 
     const _res = await generateResponse(dialog, task_instruction)
-    console.log("reflectPositiveEmotion", _res)
+    // console.log("reflectPositiveEmotion", _res)
 
     try {
         const res = JSON.parse(_res)
@@ -245,17 +244,12 @@ Property "rationale": explain how you generate your response follow instruction.
     return response
 }
 
-const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) => {
+const retrieveRelevantDiaryByContext = async (diaryid, userid) => {
     let results = []
 
     try {
-        const context = await categorizeContext(diary, dialog)
-
-        if (!context?.activity) {
-            return results
-        }
-        const query = diaryid ? { userid: userid, _id: { $ne: diaryid } } : { userid: userid }
-        diaries = await Diary.find(query);
+        const currentDiary = await Diary.findOne({ _id: diaryid })
+        let diaries = await Diary.find({ userid: userid, _id: { $ne: diaryid } });
         if (!diaries) {
             return results
         }
@@ -263,21 +257,17 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
         const contextRelevantDiary = []
         diaries.forEach(diary => {
             let similarityScore = 0
-            if (diary.activity === context.activity) similarityScore += 0.25;
-            if (diary.location === context.location) similarityScore += 0.25;
-            if (diary.people === context.people) similarityScore += 0.25;
-            if (diary.time_of_day === context.time_of_day) similarityScore += 0.25;
+            if (diary.activity === currentDiary.activity) similarityScore += 0.25;
+            if (diary.location === currentDiary.location) similarityScore += 0.25;
+            if (diary.people === currentDiary.people) similarityScore += 0.25;
+            if (diary.time_of_day === currentDiary.time_of_day) similarityScore += 0.25;
 
             if (similarityScore >= 0.5) {
                 contextRelevantDiary.push({
                     content: diary.content,
                     similarity: similarityScore,
-                    emotion_retention: diary.emotion_retention,
                     context_retention: diary.context_retention,
-                    activity: diary.activity,
-                    location: diary.location,
-                    people: diary.people,
-                    time_of_day: diary.time_of_day,
+                    reasons: diary.reasons,
                     emotions: diary.emotions
                 })
             }
@@ -293,7 +283,7 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
                 reasons: e.reasons
             }))
         }
-        // console.log("topThree context", topThree)
+        console.log("topThree context", topThree)
     } catch (err) {
         err && console.error(err);
         return results
@@ -363,68 +353,6 @@ const generateResponse = async (dialog, instruction) => {
     return response
 }
 
-const categorizeContext = async (diary, dialog, userid) => {
-    const response = {
-        activity: "",
-        location: "",
-        people: "",
-        time_of_day: "",
-    }
-
-    const existingCategories = {}
-    try {
-        const location = await Statistic.distinct("subcategory", { category: "location", userid })
-        const people = await Statistic.distinct("subcategory", { category: "people", userid })
-        const activity = await Statistic.distinct("subcategory", { category: "activity", userid })
-
-        existingCategories["location"] = location
-        existingCategories["people"] = people
-        existingCategories["activity"] = activity
-    } catch (err) {
-        console.error(err)
-    }
-
-    const { activity, location, people } = existingCategories
-
-    let activitySet = activity.concat(Object.values(PREDEFINED_ACTIVITY))
-    activitySet = [...new Set(activitySet)]
-    let locationSet = location.concat(Object.values(PREDEFINED_LOCATION))
-    locationSet = [...new Set(locationSet)]
-    let peopleSet = people.concat(Object.values(PREDEFINED_PEOPLE))
-    peopleSet = [...new Set(peopleSet)]
-
-    const instruction = `Based on diary and dialog, classify contextual information into category.
-Use JSON format with the following properties:
-- activity: detect key activity in the diary and return the category that it belong to. Consider these category: ${JSON.stringify(activitySet)}. If it doesn't belong to any of those, generate suitable category label. Return only one main activity. Don't return "other".
-- location: detect where did user usually have that emotions and return the category that it belong to. Consider these category: ${JSON.stringify(locationSet)}. If it doesn't belong to any of those, generate suitable category label. Return only one location label relate to activity. Don't return "other".
-- people: detect who did cause those emotions and return the category that it belong to. Consider these category: ${JSON.stringify(peopleSet)}. If it doesn't belong to any of those, generate suitable category label. Return only one people label relate to activity. Don't return "other".
-- time_of_day: what time of day did event happen. Only use one of the following: ${JSON.stringify(TIMES_OF_DAY)}. Return only one word.
-- rationale: Describe your rationale on how properties were derived.
-    {
-        "activity": string | null,
-        "location": string | null,
-        "people": string | null,
-        "time_of_day": string | null,
-        "rationale": string,
-    }
-
-User's diary: ${diary}
-Dialog: ${JSON.stringify(dialog)}    `
-
-    const _res = await generateAnalysis(instruction)
-    try {
-        const res = JSON.parse(_res)
-        response.activity = res.activity
-        response.location = res.location
-        response.people = res.people
-        response.time_of_day = res.time_of_day
-    } catch (error) {
-        console.error("categorizeContext", error)
-    }
-
-    return response
-}
-
 const getEmotionList = async (userid) => {
     const presetEmotions = Object.values(EMOTION_LABEL)
     if (!userid) {
@@ -438,7 +366,6 @@ module.exports = {
     askMissingInfor,
     recognizeEmotion,
     reflectNegativeEmotion,
-    categorizeContext,
     generateGoodbye,
     reflectPositiveEmotion,
     generateResponse,
