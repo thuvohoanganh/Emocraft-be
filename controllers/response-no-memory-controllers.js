@@ -27,7 +27,7 @@ Return in JSON format, structured as follows:
     "emotions": [string]
 }
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.
+Property "rationale": explain how you generate your response follow instruction no more than 20 words.
 Property "emotions": no more than 2 emotions.`
 
     const response = {
@@ -67,9 +67,7 @@ const reflectNegativeEmotionNoMem = async (userid, diaryid, diary, dialog, emoti
     let task_instruction = `Your task is helping user reflect the reason of their emotions.
 Do the following tasks. For each conversation turn, execute one task only. Response in Korean.
 1. Describe what maybe the reason of user's emotion and ask for validation from user.
-2. Your task is challenge the negative thought by questioning its validity and looking for evidence
-that contradicts it. This can help the individual gain a more balanced perspective and reduce the intensity of their negative emotions.
-Analyze their past diaries to know their emotion patterns.
+2. Your task is challenge the negative thought by questioning its validity and looking for evidence that contradicts it. This can help the individual gain a more balanced perspective and reduce the intensity of their negative emotions.
 Your response should less than 100 words.
 Ask only 1 question at a time.
 
@@ -81,7 +79,7 @@ Return in JSON format, structured as follows:
     "rationale": string
 }
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.`
+Property "rationale": explain how you generate your response follow instruction no more than 20 words.`
 
     const _res = await generateResponse(dialog, task_instruction)
     // console.log("reflectNegativeEmotionNoMem", _res)
@@ -109,7 +107,7 @@ const reflectPositiveEmotionNoMem = async (userid, diaryid, diary, dialog, emoti
         content: "",
     }
     let task_instruction = `Inquire about details to show your interest in what help them have positive emotions.
-Ask only 1 question at a time. Response should be shorter than 100 words in Korean.
+Ask only 1 question at a time. Response in Korean.
 
 Current diary: ${diary}
 
@@ -119,7 +117,7 @@ Return in JSON format, structured as follows:
     "rationale": string
 }
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.`
+Property "rationale": explain how you generate your response follow instruction now more than 20 words.`
 
     const _res = await generateResponse(dialog, task_instruction)
     // console.log("reflectPositiveEmotionNoMem", _res)
