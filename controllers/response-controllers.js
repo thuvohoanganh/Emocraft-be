@@ -106,7 +106,7 @@ Property "emotions": no more than 2 emotions.`
         }
         response.content = res.response
         response.analysis = res.emotions
-        console.log("recognizeEmotion", res)
+        // console.log("recognizeEmotion", res)
     } catch {
         console.error(_res)
         response.content = _res

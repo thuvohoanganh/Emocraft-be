@@ -245,7 +245,7 @@ const generateWeeklySummary = async (uid, startDate, endDate) => {
     // console.log("newSummary", newSummary)
     try {
         await newSummary.save();
-        console.log('Successfully saved new weekly summary');
+        // console.log('Successfully saved new weekly summary');
     } catch (err) {
         console.error(err);
         throw new Error('Saving summary failed, please try again later.');
@@ -460,7 +460,7 @@ const chatbotConversationNoMem = async (req, res, next) => {
     }
     /* END: Check criteria in current phase, define the next phase */
 
-    console.log("nextPhase", nextPhase)
+    // console.log("nextPhase", nextPhase)
 
     /* START: Generate response */
     if (nextPhase === PHASE_LABEL.PHASE_1) {
