@@ -61,9 +61,8 @@ mongoose
   .connect(process.env.MONGODB_ICLAB_CONNECTION)
   .then(() => {
     app.listen(process.env.PORT || 8000);
+    console.log("Deploy sucessfully 4 Mar")
   })
   .catch(err => {
     console.log(err);
   });
-
-// generateDatasetForEvaluation()

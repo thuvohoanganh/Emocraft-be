@@ -1,0 +1,26 @@
+services:
+  mongodb:
+    image: mongodb/mongodb-community-server:6.0-ubi8
+    env_file: ./.db.env
+    volumes:
+      - mongodb:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+        test: ["CMD", "mongosh", "--eval", "db.runCommand({ ping: 1 })"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+  
+  backend:
+    image: thuvo/emocraft
+    ports:
+      - "8000:8000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    env_file: ./.prod.env
+
+volumes:
+  mongodb:
+    driver: local

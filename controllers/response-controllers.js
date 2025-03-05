@@ -4,7 +4,6 @@ const { TIMES_OF_DAY, PREDEFINED_PEOPLE, PREDEFINED_LOCATION, PREDEFINED_ACTIVIT
 const { PHASE_LABEL, GPT } = require('../constant')
 const Diary = require('../models/diary');
 const Statistic = require('../models/statistic');
-const { generateAnalysis } = require("./phase-controllers");
 
 dotenv.config()
 const openai = new OpenAI({
@@ -44,8 +43,8 @@ const askMissingInfor = async (diary, dialog, summary) => {
     return response
 }
 
-const recognizeEmotion = async (diary, userid, dialog) => {
-    const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, "", diary, dialog)
+const recognizeEmotion = async (diaryid, diary, userid, dialog) => {
+    const retrievedDiaries = await retrieveRelevantDiaryByContext(diaryid, userid)
     const emotionList = await getEmotionList(userid)
     let task_instruction = ""
     
@@ -65,10 +64,11 @@ Return in JSON format, structured as follows:
 {
     "response": string,
     "rationale": string,
+    "emotions": [string]
 }
 Property "response": your response to user. 
 Property "rationale": explain how you generate your response follow instruction.
-`
+Property "emotions": no more than 2 emotions.`
     } else {
         task_instruction = `You are a therapeutic helping user explore and understand their feelings more deeply. 
 Do the following tasks. Response should be shorter than 100 words in Korean.
@@ -85,7 +85,8 @@ Return in JSON format, structured as follows:
     "emotions": [string]
 }
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.`
+Property "rationale": explain how you generate your response follow instruction no more than 20 words.
+Property "emotions": no more than 2 emotions.`
     }
 
     const response = {
@@ -105,7 +106,7 @@ Property "rationale": explain how you generate your response follow instruction.
         }
         response.content = res.response
         response.analysis = res.emotions
-        console.log("recognizeEmotion", res)
+        // console.log("recognizeEmotion", res)
     } catch {
         console.error(_res)
         response.content = _res
@@ -116,14 +117,14 @@ Property "rationale": explain how you generate your response follow instruction.
     return response
 }
 
-const reflectNegativeEmotion = async (userid, diaryid, diary, dialog, emotions) => {
+const reflectNegativeEmotion = async (userid, diaryid, diary, dialog) => {
     const response = {
         error: "",
         phase: PHASE_LABEL.PHASE_4,
         content: "",
     }
     let task_instruction = ""
-    const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
+    const retrievedDiaries = await retrieveRelevantDiaryByContext(diaryid, userid)
     
     if (retrievedDiaries.length) {
         task_instruction += `Your task is helping user reflect the reason of their emotions.
@@ -149,9 +150,7 @@ Return in JSON format, structured as follows:
     task_instruction += `Your task is helping user reflect the reason of their emotions.
 Do the following tasks. For each conversation turn, execute one task only. Response in Korean.
 1. Describe what maybe the reason of user's emotion and ask for validation from user.
-2. Your task is challenge the negative thought by questioning its validity and looking for evidence
-that contradicts it. This can help the individual gain a more balanced perspective and reduce the intensity of their negative emotions.
-Analyze their past diaries to know their emotion patterns.
+2. Your task is challenge the negative thought by questioning its validity and looking for evidence that contradicts it. This can help the individual gain a more balanced perspective and reduce the intensity of their negative emotions.
 Your response should less than 100 words.
 Ask only 1 question at a time.
 
@@ -163,11 +162,11 @@ Return in JSON format, structured as follows:
     "rationale": string
 }
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.`
+Property "rationale": explain how you generate your response follow instruction no more than 20 words.`
     }
 
     const _res = await generateResponse(dialog, task_instruction)
-    console.log("reflectNegativeEmotion", _res)
+    // console.log("reflectNegativeEmotion", _res)
 
     try {
         const res = JSON.parse(_res)
@@ -175,7 +174,6 @@ Property "rationale": explain how you generate your response follow instruction.
             throw ("Don't return in JSON format")
         }
         response.content = res.response
-        saveReasoning(res.rationale, diaryid)
     } catch {
         console.error(_res)
         response.content = _res
@@ -186,17 +184,17 @@ Property "rationale": explain how you generate your response follow instruction.
     return response
 }
 
-const reflectPositiveEmotion = async (userid, diaryid, diary, dialog, emotions) => {
+const reflectPositiveEmotion = async (userid, diaryid, diary, dialog) => {
     const response = {
         error: "",
         phase: PHASE_LABEL.PHASE_5,
         content: "",
     }
     let task_instruction = ""
-    const retrievedDiaries = await retrieveRelevantDiaryByContext(userid, diaryid, diary, dialog)
+    const retrievedDiaries = await retrieveRelevantDiaryByContext(diaryid, userid)
     
     if (retrievedDiaries.length) {
-        task_instruction += `If user have similar emotion in the past, recall it and encourage user.
+        task_instruction = `If user have similar emotion in the past, recall it and encourage user.
 Inquire about details to show your interest in what help them have positive emotions.
 Ask only 1 question at a time. Response in Korean.
 
@@ -211,7 +209,7 @@ Return in JSON format, structured as follows:
     "rationale": string
 }`
     } else {
-    task_instruction += `Inquire about details to show your interest in what help them have positive emotions.
+    task_instruction = `Inquire about details to show your interest in what help them have positive emotions.
 Ask only 1 question at a time. Response in Korean.
 
 Current diary: ${diary}
@@ -222,11 +220,11 @@ Return in JSON format, structured as follows:
     "rationale": string
 }
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.`
+Property "rationale": explain how you generate your response follow instruction now more than 20 words.`
     }
 
     const _res = await generateResponse(dialog, task_instruction)
-    console.log("reflectPositiveEmotion", _res)
+    // console.log("reflectPositiveEmotion", _res)
 
     try {
         const res = JSON.parse(_res)
@@ -234,7 +232,6 @@ Property "rationale": explain how you generate your response follow instruction.
             throw ("Don't return in JSON format")
         }
         response.content = res.response
-        saveReasoning(res.rationale, diaryid)
     } catch {
         console.error(_res)
         response.content = _res
@@ -245,18 +242,12 @@ Property "rationale": explain how you generate your response follow instruction.
     return response
 }
 
-const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) => {
+const retrieveRelevantDiaryByContext = async (diaryid, userid) => {
     let results = []
 
     try {
-        const context = await categorizeContext(diary, dialog)
-
-        // console.log("retrieveRelevantDiaryByContext", context)
-        if (!context?.activity) {
-            return results
-        }
-        const query = diaryid ? { userid: userid, _id: { $ne: diaryid } } : { userid: userid }
-        diaries = await Diary.find(query);
+        const currentDiary = await Diary.findOne({ _id: diaryid })
+        let diaries = await Diary.find({ userid: userid, _id: { $ne: diaryid } });
         if (!diaries) {
             return results
         }
@@ -264,23 +255,18 @@ const retrieveRelevantDiaryByContext = async (userid, diaryid, diary, dialog) =>
         const contextRelevantDiary = []
         diaries.forEach(diary => {
             let similarityScore = 0
-            if (diary.activity === context.activity) similarityScore += 0.25;
-            if (diary.location === context.location) similarityScore += 0.25;
-            if (diary.people === context.people) similarityScore += 0.25;
-            if (diary.time_of_day === context.time_of_day) similarityScore += 0.25;
+            if (diary.activity === currentDiary.activity) similarityScore += 0.25;
+            if (diary.location === currentDiary.location) similarityScore += 0.25;
+            if (diary.people === currentDiary.people) similarityScore += 0.25;
+            if (diary.time_of_day === currentDiary.time_of_day) similarityScore += 0.25;
 
             if (similarityScore >= 0.5) {
                 contextRelevantDiary.push({
                     content: diary.content,
                     similarity: similarityScore,
-                    emotion_retention: diary.emotion_retention,
                     context_retention: diary.context_retention,
-                    activity: diary.activity,
-                    location: diary.location,
-                    people: diary.people,
-                    time_of_day: diary.time_of_day,
-                    emotions: diary.emotions,
-                    reasons: diary.reasons
+                    reasons: diary.reasons,
+                    emotions: diary.emotions
                 })
             }
         })
@@ -365,86 +351,6 @@ const generateResponse = async (dialog, instruction) => {
     return response
 }
 
-const categorizeContext = async (diary, dialog, userid) => {
-    const response = {
-        activity: "",
-        location: "",
-        people: "",
-        time_of_day: "",
-    }
-
-    const existingCategories = {}
-    try {
-        const location = await Statistic.distinct("subcategory", { category: "location", userid })
-        const people = await Statistic.distinct("subcategory", { category: "people", userid })
-        const activity = await Statistic.distinct("subcategory", { category: "activity", userid })
-
-        existingCategories["location"] = location
-        existingCategories["people"] = people
-        existingCategories["activity"] = activity
-    } catch (err) {
-        console.error(err)
-    }
-
-    const { activity, location, people } = existingCategories
-
-    let activitySet = activity.concat(Object.values(PREDEFINED_ACTIVITY))
-    activitySet = [...new Set(activitySet)]
-    let locationSet = location.concat(Object.values(PREDEFINED_LOCATION))
-    locationSet = [...new Set(locationSet)]
-    let peopleSet = people.concat(Object.values(PREDEFINED_PEOPLE))
-    peopleSet = [...new Set(peopleSet)]
-
-    const instruction = `Based on diary and dialog, classify contextual information into category.
-Use JSON format with the following properties:
-- activity: detect key activity in the diary and return the category that it belong to. Consider these category: ${JSON.stringify(activitySet)}. If it doesn't belong to any of those, generate suitable category label. Return only one main activity. Don't return "other".
-- location: detect where did user usually have that emotions and return the category that it belong to. Consider these category: ${JSON.stringify(locationSet)}. If it doesn't belong to any of those, generate suitable category label. Return only one location label relate to activity. Don't return "other".
-- people: detect who did cause those emotions and return the category that it belong to. Consider these category: ${JSON.stringify(peopleSet)}. If it doesn't belong to any of those, generate suitable category label. Return only one people label relate to activity. Don't return "other".
-- time_of_day: what time of day did event happen. Only use one of the following: ${JSON.stringify(TIMES_OF_DAY)}. Return only one word.
-- rationale: Describe your rationale on how properties were derived.
-    {
-        "activity": string | null,
-        "location": string | null,
-        "people": string | null,
-        "time_of_day": string | null,
-        "rationale": string,
-    }
-
-User's diary: ${diary}
-Dialog: ${JSON.stringify(dialog)}    `
-
-    const _res = await generateAnalysis(instruction)
-    try {
-        const res = JSON.parse(_res)
-        response.activity = res.activity
-        response.location = res.location
-        response.people = res.people
-        response.time_of_day = res.time_of_day
-    } catch (error) {
-        console.error("categorizeContext", error)
-    }
-
-    return response
-}
-
-const saveReasoning = async (reasons, diaryid) => {
-    if (!reasons || !diaryid) return
-    let existingDiary;
-
-    try {
-        existingDiary = await Diary.findOne({ _id: diaryid });
-        if (!existingDiary) {
-            throw ("Not found dairy", diaryid)
-        }
-
-        existingDiary.reasons = reasons
-
-        await existingDiary.save();
-    } catch (err) {
-        err && console.error(err);
-    }
-}
-
 const getEmotionList = async (userid) => {
     const presetEmotions = Object.values(EMOTION_LABEL)
     if (!userid) {
@@ -458,7 +364,6 @@ module.exports = {
     askMissingInfor,
     recognizeEmotion,
     reflectNegativeEmotion,
-    categorizeContext,
     generateGoodbye,
     reflectPositiveEmotion,
     generateResponse,

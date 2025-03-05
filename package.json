@@ -26,6 +26,11 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
+    "build-docker": "docker build -t thuvo/emocraft .",
+    "push-docker": "docker push thuvo/emocraft",
+    "pull-docker": "docker image pull thuvo/emocraft",
+    "log-be": "docker logs -f emocraft-be-backend-1",
+    "atlas": "docker run -p 27017:27017 mongodb/mongodb-atlas-local",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

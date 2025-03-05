@@ -13,7 +13,7 @@ const openai = new OpenAI({
 const recognizeEmotionNoMem = async (diary, userid, dialog) => {
     const emotionList = await getEmotionList(userid)
     let task_instruction = `You are a therapeutic helping user explore and understand their feelings more deeply. 
-Do the following tasks. Response in Korean.
+Do the following tasks. Response should be shorter than 100 words in Korean.
 1. Recognizes the feelings expressed by the user. Consider these emotions: ${emotionList}
 2. Reflects these emotions back to the user, acting as an emotional mirror.
 3. Validate the client's feelings, making them feel understood and listened to.
@@ -27,7 +27,8 @@ Return in JSON format, structured as follows:
     "emotions": [string]
 }
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.`
+Property "rationale": explain how you generate your response follow instruction no more than 20 words.
+Property "emotions": no more than 2 emotions.`
 
     const response = {
         error: "",
@@ -46,9 +47,9 @@ Property "rationale": explain how you generate your response follow instruction.
         }
         response.content = res.response
         response.analysis = res.emotions
-        console.log("recognizeEmotionNoMem", res)
+        // console.log("recognizeEmotionNoMem", res)
     } catch {
-        console.error(_res)
+        console.error("recognizeEmotionNoMem", _res)
         response.content = _res
     }
 
@@ -66,9 +67,7 @@ const reflectNegativeEmotionNoMem = async (userid, diaryid, diary, dialog, emoti
     let task_instruction = `Your task is helping user reflect the reason of their emotions.
 Do the following tasks. For each conversation turn, execute one task only. Response in Korean.
 1. Describe what maybe the reason of user's emotion and ask for validation from user.
-2. Your task is challenge the negative thought by questioning its validity and looking for evidence
-that contradicts it. This can help the individual gain a more balanced perspective and reduce the intensity of their negative emotions.
-Analyze their past diaries to know their emotion patterns.
+2. Your task is challenge the negative thought by questioning its validity and looking for evidence that contradicts it. This can help the individual gain a more balanced perspective and reduce the intensity of their negative emotions.
 Your response should less than 100 words.
 Ask only 1 question at a time.
 
@@ -80,10 +79,10 @@ Return in JSON format, structured as follows:
     "rationale": string
 }
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.`
+Property "rationale": explain how you generate your response follow instruction no more than 20 words.`
 
     const _res = await generateResponse(dialog, task_instruction)
-    console.log("reflectNegativeEmotionNoMem", _res)
+    // console.log("reflectNegativeEmotionNoMem", _res)
 
     try {
         const res = JSON.parse(_res)
@@ -91,9 +90,8 @@ Property "rationale": explain how you generate your response follow instruction.
             throw ("Don't return in JSON format")
         }
         response.content = res.response
-        saveReasoning(res.rationale, diaryid)
     } catch {
-        console.error(_res)
+        console.error("reflectNegativeEmotionNoMem", _res)
         response.content = _res
     }
 
@@ -109,7 +107,7 @@ const reflectPositiveEmotionNoMem = async (userid, diaryid, diary, dialog, emoti
         content: "",
     }
     let task_instruction = `Inquire about details to show your interest in what help them have positive emotions.
-Ask only 1 question at a time. Response should be shorter than 100 words in Korean.
+Ask only 1 question at a time. Response in Korean.
 
 Current diary: ${diary}
 
@@ -119,10 +117,10 @@ Return in JSON format, structured as follows:
     "rationale": string
 }
 Property "response": your response to user. 
-Property "rationale": explain how you generate your response follow instruction.`
+Property "rationale": explain how you generate your response follow instruction now more than 20 words.`
 
     const _res = await generateResponse(dialog, task_instruction)
-    console.log("reflectPositiveEmotionNoMem", _res)
+    // console.log("reflectPositiveEmotionNoMem", _res)
 
     try {
         const res = JSON.parse(_res)
@@ -130,9 +128,8 @@ Property "rationale": explain how you generate your response follow instruction.
             throw ("Don't return in JSON format")
         }
         response.content = res.response
-        saveReasoning(res.rationale, diaryid)
     } catch {
-        console.error(_res)
+        console.error("reflectPositiveEmotionNoMem", _res)
         response.content = _res
     }
 
@@ -174,24 +171,6 @@ const generateResponse = async (dialog, instruction) => {
 
     response = response.replace(/json|\`\`\`+/gm, '')
     return response
-}
-
-const saveReasoning = async (reasons, diaryid) => {
-    if (!reasons || !diaryid) return
-    let existingDiary;
-
-    try {
-        existingDiary = await Diary.findOne({ _id: diaryid });
-        if (!existingDiary) {
-            throw ("Not found dairy", diaryid)
-        }
-
-        existingDiary.reasons = reasons
-
-        await existingDiary.save();
-    } catch (err) {
-        err && console.error(err);
-    }
 }
 
 const getEmotionList = async (userid) => {
